@@ -11,30 +11,35 @@ import {
  FILE_SEARCH_QUERY,
 } from './constant';
 
-const BROADCAST_ADDR = '172.17.255.255';
-const USER_NAME: string | null | undefined = process.argv[2];
-const USER_ID = uuidv4();
+export const BROADCAST_ADDR = '172.17.255.255';
+export const USER_NAME: string | null | undefined = process.argv[2];
+export const USER_ID = uuidv4();
 
 if (!USER_NAME) {
  throw new Error('Pass argument for username');
  exit(-1);
 }
 
-interface peerInfo {
- ipAddr: String;
- clientId: String;
- peerUserName: String;
+export interface peerInfo {
+ ipAddr: string;
+ clientId: string;
+ peerUserName: string;
 }
 
-interface activeUserObject {
+export interface activeUserObject {
  [key: string]: peerInfo;
+}
+
+export interface payload {
+ data: any;
+ message: string;
 }
 
 interface udpPacket {
  pktType: number;
  clientId: string;
  clientUserName: string;
- payload: null;
+ payload: payload | null;
  currTime: Date;
  ipInfo: {
   senderPort: number;
