@@ -17,6 +17,14 @@ const UDP_SERVER = new UDPSever(BROADCAST_ADDR, USER_NAME, USER_ID);
 
 //creating a TCP server
 const TCP_SERVER = new TCPserver(USER_NAME, USER_ID);
+
+setTimeout(() => {
+ TCP_SERVER.sendToTCPServer(
+  { data: null, message: 'Hello how are you' },
+  '172.17.0.2',
+ );
+}, 10000);
+
 //handling server close cases
 async function exitHandler(options: any, exitCode: any) {
  await UDP_SERVER.sendLastPacket();

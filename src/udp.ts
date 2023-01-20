@@ -127,7 +127,7 @@ export class UDPSever {
     console.log(
      'New peer found in network',
      "Peer's username - ",
-     packetObjRecevied.clientId,
+     packetObjRecevied.clientUserName,
      rinfo.address,
     );
     this.ACTIVE_USERS[packetObjRecevied.clientId] = {
@@ -141,7 +141,7 @@ export class UDPSever {
      console.log(
       'A peer is leaving the netwrok',
       "Peer's username - ",
-      packetObjRecevied.clientId,
+      packetObjRecevied.clientUserName,
       rinfo.address,
      );
      delete this.ACTIVE_USERS[packetObjRecevied.clientId];

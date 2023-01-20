@@ -68,15 +68,15 @@ export class TCPserver {
   this.TCP_SERVER.on('connection', (socket: TCPSocket) => {
    //when a client connects connects to the tcp server, get a connection socket from we can listen for message and write message to the client
 
-   console.log(socket.remoteAddress, 'connected on TCP server');
+   console.log(socket.remoteAddress, 'connected to TCP server');
 
    //setting encoding for socket
    socket.setEncoding('utf-8');
 
    //will tigger when a socket receives data
-   //  socket.on('data', (data: Buffer) => {
-   //   //receving data here
-   //  });
+   socket.on('data', (data: Buffer) => {
+    console.log(data.toString());
+   });
 
    //will trigger when a error occurs on socket
    socket.on('error', function (error) {
@@ -124,7 +124,7 @@ export class TCPserver {
  }
 
  //send a tcp packet from the open socket
- public sendTCPPacket(
+ private sendTCPPacket(
   socket: TCPSocket,
   pktType: number,
   payload: payload | null,
@@ -153,13 +153,17 @@ export class TCPserver {
  }
 
  //client to send packet to tcp server
- private sendToTCPServer(payload: payload) {
-  const socket: TCPSocket = net.connect({ port: TCP_SERVER_PORT }, () => {
-   this.sendTCPPacket(socket, CHAT_MESSAGE, payload);
-  });
+ public sendToTCPServer(payload: payload, clientIP: string) {
+  const socket: TCPSocket = net.connect(
+   { port: TCP_SERVER_PORT, host: clientIP },
+   () => {
+    this.sendTCPPacket(socket, CHAT_MESSAGE, payload);
+   },
+  );
   socket.on('data', async (data: string) => {
    try {
     const tcpPakcet: tcpPacket = await this.parseToJson(data);
+    console.log(tcpPakcet);
     if (tcpPakcet.pktType === TCP_PACKET_RECEVIED) {
      // if packet recevied by server successfully
      socket.end();
@@ -167,7 +171,7 @@ export class TCPserver {
      //some error in sending the packet
      socket.end();
      //resending the packet to server
-     this.sendToTCPServer(payload);
+     this.sendToTCPServer(payload, clientIP);
     } else {
      throw new Error('Unhandled tcp packet type');
     }
