@@ -15,5 +15,7 @@ export const FILE_SEARCH_QUERY: number = 4;
 export const TCP_PACKET_RECEVIED: number = 1;
 export const TCP_PACKET_ERROR: number = 2;
 export const CHAT_MESSAGE: number = 3;
+export const CHAT_MESSAGE_NEXT: number = 4;
+export const CHAT_MESSAGE_LAST: number = 5;
 
 //tcp packets constants

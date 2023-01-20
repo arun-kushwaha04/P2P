@@ -114,7 +114,7 @@ export class UDPSever {
     console.log(
      'New peer connected to network',
      "Peer's username - ",
-     packetObjRecevied.clientId,
+     packetObjRecevied.clientUserName,
      rinfo.address,
     );
     this.ACTIVE_USERS[packetObjRecevied.clientId] = {

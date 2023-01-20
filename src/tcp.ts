@@ -6,6 +6,8 @@ import {
  TCP_PACKET_ERROR,
  TCP_PACKET_RECEVIED,
  CHAT_MESSAGE,
+ CHAT_MESSAGE_LAST,
+ CHAT_MESSAGE_NEXT,
 } from './constant';
 
 //TCP packet structure
@@ -68,14 +70,44 @@ export class TCPserver {
   this.TCP_SERVER.on('connection', (socket: TCPSocket) => {
    //when a client connects connects to the tcp server, get a connection socket from we can listen for message and write message to the client
 
+   let packetObjRecevied: tcpPacket;
+   let chatMessage: string;
+   let CLIENT_USER_NAME: string;
+
    console.log(socket.remoteAddress, 'connected to TCP server');
 
    //setting encoding for socket
    socket.setEncoding('utf-8');
 
    //will tigger when a socket receives data
-   socket.on('data', (data: Buffer) => {
-    console.log(data.toString());
+   socket.on('data', async (data: Buffer) => {
+    packetObjRecevied = await this.parseToJson(data.toString());
+    if (packetObjRecevied.pktType === CHAT_MESSAGE) {
+     this.sendTCPPacket(
+      socket,
+      CHAT_MESSAGE_NEXT,
+      null,
+      'request for next chat message',
+     );
+     chatMessage += packetObjRecevied.payload?.data;
+    } else if (packetObjRecevied.pktType === CHAT_MESSAGE_LAST) {
+     this.sendTCPPacket(
+      socket,
+      TCP_PACKET_RECEVIED,
+      null,
+      'recevied chat message',
+     );
+     chatMessage += packetObjRecevied.payload?.data;
+     CLIENT_USER_NAME = packetObjRecevied.clientUserName;
+    } else {
+     this.sendTCPPacket(
+      socket,
+      TCP_PACKET_ERROR,
+      null,
+      'invalid protocol used',
+     );
+     chatMessage = '';
+    }
    });
 
    //will trigger when a error occurs on socket
@@ -95,20 +127,7 @@ export class TCPserver {
     socket.destroy();
    });
 
-   //will trigger at the end of data transfer
-   socket.on('end', async (data: string) => {
-    try {
-     const tcpPakcet: tcpPacket = await this.parseToJson(data);
-     console.log(tcpPakcet);
-     this.sendTCPPacket(socket, TCP_PACKET_RECEVIED, null);
-     //TODO: checksum here sendTCPPacket(socket, TCP_PACKET_ERROR, null);
-    } catch (error) {
-     this.sendTCPPacket(socket, TCP_PACKET_ERROR, null);
-     throw new Error('Invalid packet type');
-    }
-   });
-
-   socket.on('close', function (error) {
+   socket.on('close', async (error) => {
     let bread = socket.bytesRead;
     let bwrite = socket.bytesWritten;
     console.log(
@@ -116,6 +135,17 @@ export class TCPserver {
      'Bytes written : ' + bwrite,
      'Socket closed!',
     );
+    console.log('Message from client', CLIENT_USER_NAME, chatMessage);
+    // try {
+    //  const tcpPakcet: tcpPacket = await this.parseToJson(data);
+    //  console.log(tcpPakcet);
+    //  this.sendTCPPacket(socket, TCP_PACKET_RECEVIED, null);
+    //  //TODO: checksum here sendTCPPacket(socket, TCP_PACKET_ERROR, null);
+    // } catch (error) {
+    //  this.sendTCPPacket(socket, TCP_PACKET_ERROR, null);
+    //  throw new Error('Invalid packet type');
+    // }
+
     if (error) {
      console.log('Socket was closed coz of transmission error');
     }
@@ -127,21 +157,26 @@ export class TCPserver {
  private sendTCPPacket(
   socket: TCPSocket,
   pktType: number,
-  payload: payload | null,
- ): void {
+  buffer: string | null,
+  message: string,
+ ): boolean {
+  return socket.write(this.genreateTcpPktToStr(pktType, buffer, message));
+ }
+
+ //send a tcp packet from the open socket
+ private genreateTcpPktToStr(
+  pktType: number,
+  data: any,
+  message: string,
+ ): string {
   const objToSend: tcpPacket = {
    pktType,
    clientId: this.USER_ID,
    clientUserName: this.USER_NAME!,
-   payload: payload,
+   payload: { data, message },
    currTime: new Date(),
   };
-  const message: string = JSON.stringify(objToSend);
-  let is_kernel_buffer_full: boolean = socket.write(message);
-  if (!is_kernel_buffer_full) {
-   socket.pause();
-  }
-  return;
+  return JSON.stringify(objToSend);
  }
 
  public closeTCPServer() {
@@ -153,13 +188,20 @@ export class TCPserver {
  }
 
  //client to send packet to tcp server
- public sendToTCPServer(payload: payload, clientIP: string) {
+ public sendToTCPServer(message: string, clientIP: string) {
+  let sindex = 0;
+  let eindex = 0;
+  let buffer: string;
   const socket: TCPSocket = net.connect(
    { port: TCP_SERVER_PORT, host: clientIP },
    () => {
-    this.sendTCPPacket(socket, CHAT_MESSAGE, payload);
+    [buffer, eindex] = this.generateBufferChunk(message, sindex);
+    if (eindex === message.length)
+     this.sendTCPPacket(socket, CHAT_MESSAGE_LAST, buffer, 'chat message last');
+    else this.sendTCPPacket(socket, CHAT_MESSAGE, buffer, 'chat message');
    },
   );
+  socket.setEncoding('utf8');
   socket.on('data', async (data: string) => {
    try {
     const tcpPakcet: tcpPacket = await this.parseToJson(data);
@@ -171,7 +213,19 @@ export class TCPserver {
      //some error in sending the packet
      socket.end();
      //resending the packet to server
-     this.sendToTCPServer(payload, clientIP);
+     this.sendToTCPServer(message, clientIP);
+    } else if (tcpPakcet.pktType === CHAT_MESSAGE_NEXT) {
+     sindex = eindex;
+     [buffer, eindex] = this.generateBufferChunk(message, sindex);
+     console.log(buffer, eindex);
+     if (eindex === message.length)
+      this.sendTCPPacket(
+       socket,
+       CHAT_MESSAGE_LAST,
+       buffer,
+       'chat message last',
+      );
+     else this.sendTCPPacket(socket, CHAT_MESSAGE, buffer, 'chat message');
     } else {
      throw new Error('Unhandled tcp packet type');
     }
@@ -180,6 +234,27 @@ export class TCPserver {
    }
    return;
   });
+ }
+
+ private generateBufferChunk(
+  message: string,
+  startIdx: number,
+ ): [string, number] {
+  let bufferSreamLength = 0;
+  let string = '';
+  let idx = startIdx;
+  let size = 0;
+  while (bufferSreamLength < 5000 && idx < message.length) {
+   size = Buffer.byteLength(message[idx], 'utf8');
+   if (size + bufferSreamLength <= 5000) {
+    bufferSreamLength += size;
+    string += message[idx];
+    idx++;
+   } else {
+    break;
+   }
+  }
+  return [string, idx];
  }
 
  private parseToJson(data: string): Promise<tcpPacket> {

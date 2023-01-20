@@ -19,10 +19,9 @@ const UDP_SERVER = new UDPSever(BROADCAST_ADDR, USER_NAME, USER_ID);
 const TCP_SERVER = new TCPserver(USER_NAME, USER_ID);
 
 setTimeout(() => {
- TCP_SERVER.sendToTCPServer(
-  { data: null, message: 'Hello how are you' },
-  '172.17.0.2',
- );
+ const firstUserIP =
+  UDP_SERVER.ACTIVE_USERS[Object.keys(UDP_SERVER.ACTIVE_USERS)[0]].ipAddr;
+ TCP_SERVER.sendToTCPServer(`Hello mate how are you ${USER_NAME}`, firstUserIP);
 }, 10000);
 
 //handling server close cases
