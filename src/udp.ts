@@ -64,7 +64,7 @@ export class UDPSever {
   this.addListenerToUDPSocket();
  }
 
- private createUDPServer = () => {
+ private createUDPServer() {
   // this server will only send broadcast message
   // UDP_PING
   // UDP_PONG
@@ -78,7 +78,7 @@ export class UDPSever {
   });
 
   return server;
- };
+ }
 
  // function createUDPClient() {
  //  // this client will handle all incoming UDP request
@@ -94,7 +94,7 @@ export class UDPSever {
  //  return client;
  // }
 
- private addListenerToUDPSocket = () => {
+ private addListenerToUDPSocket() {
   // adding handler to handle request on udp server port
   this.UDP_SOCKET.on('message', async (message: string, rinfo: RemoteInfo) => {
    //handling type of packet
@@ -161,7 +161,7 @@ export class UDPSever {
   this.UDP_SOCKET.on('close', () => {
    this.sendLastPacket();
   });
- };
+ }
 
  private sendPing = () => {
   // this function for sending new connection notification to the network

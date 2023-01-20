@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { exit } from 'process';
 import { UDPSever } from './udp';
+import { TCPserver } from './tcp';
 
 export const BROADCAST_ADDR = '172.17.255.255';
 export const USER_NAME: string | null | undefined = process.argv[2];
@@ -15,10 +16,11 @@ if (!USER_NAME) {
 const UDP_SERVER = new UDPSever(BROADCAST_ADDR, USER_NAME, USER_ID);
 
 //creating a TCP server
-
+const TCP_SERVER = new TCPserver(USER_NAME, USER_ID);
 //handling server close cases
 async function exitHandler(options: any, exitCode: any) {
  await UDP_SERVER.sendLastPacket();
+ await TCP_SERVER.closeTCPServer();
  if (options.cleanup) console.log('clean');
  if (exitCode || exitCode === 0) console.log(exitCode);
  if (options.exit) process.exit();
