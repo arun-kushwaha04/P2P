@@ -8,7 +8,7 @@ import {
  CHAT_MESSAGE,
  CHAT_MESSAGE_LAST,
  CHAT_MESSAGE_NEXT,
-} from './constant';
+} from './constant.mjs';
 
 //TCP packet structure
 //sampleJsonObj = {

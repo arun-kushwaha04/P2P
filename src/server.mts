@@ -4,8 +4,8 @@ import { program } from 'commander';
 import inquirer from 'inquirer';
 import { v4 as uuidv4 } from 'uuid';
 import { exit } from 'process';
-import { UDPSever, peerInfo } from './udp';
-import { TCPserver } from './tcp';
+import { UDPSever, peerInfo } from './udp.mjs';
+import { TCPserver } from './tcp.mjs';
 import chalk from 'chalk';
 
 export const BROADCAST_ADDR = '172.17.255.255';
@@ -87,6 +87,8 @@ async function handleAnswer(choosenValue: string) {
  } else if (choosenValue === 'Send a chat message') {
   await sendChatMessage();
  } else {
+  await UDP_SERVER.sendLastPacket();
+  await TCP_SERVER.closeTCPServer();
   exit(0);
  }
  return;

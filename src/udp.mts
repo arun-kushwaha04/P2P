@@ -7,7 +7,7 @@ import {
  UDP_PONG,
  CLOSING_PEER,
  FILE_SEARCH_QUERY,
-} from './constant';
+} from './constant.mjs';
 
 export interface peerInfo {
  ipAddr: string;
