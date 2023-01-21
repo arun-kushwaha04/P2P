@@ -8,9 +8,11 @@ import { UDPSever, peerInfo } from './udp.mjs';
 import { TCPserver } from './tcp.mjs';
 import chalk from 'chalk';
 
-export const BROADCAST_ADDR = '172.17.255.255';
+export let BROADCAST_ADDR = '172.17.255.255';
 export const USER_NAME: string | null | undefined = process.argv[2];
 export const USER_ID = uuidv4();
+let UDP_SERVER: UDPSever;
+let TCP_SERVER: TCPserver;
 
 if (!USER_NAME) {
  throw new Error('Pass argument for username');
@@ -19,6 +21,24 @@ if (!USER_NAME) {
 
 //starting cli program
 program.version('1.0.0').description('P2P CLI');
+
+async function takeBroadcastIp() {
+ const answers = await inquirer.prompt([
+  {
+   name: 'bc_ip',
+   type: 'input',
+   message: 'Enter broadcast IP address\n',
+  },
+ ]);
+
+ if (answers.bc_ip) {
+  BROADCAST_ADDR = answers.bc_ip;
+ } else {
+  console.log(chalk.red('Enter a ip address \n'));
+  exit(-1);
+ }
+ return;
+}
 
 //cli options
 //users information
@@ -33,12 +53,13 @@ async function prompt() {
   choices: [
    'View your info',
    'View online peers',
-   'Send a chat message',
-   'Exit',
+   'Send a chat message\n',
+   //  'Exit\n',
   ],
  });
- handleAnswer(answers['cli options'] as string);
+ await handleAnswer(answers['cli options'] as string);
  await prompt();
+ return;
 }
 
 async function sendChatMessage() {
@@ -84,40 +105,37 @@ async function handleAnswer(choosenValue: string) {
   } else {
    console.log(chalk.bgRed('No online peer found in network'));
   }
- } else if (choosenValue === 'Send a chat message') {
-  await sendChatMessage();
  } else {
-  await UDP_SERVER.sendLastPacket();
-  await TCP_SERVER.closeTCPServer();
-  exit(0);
+  await sendChatMessage();
  }
  return;
 }
 
 // validating ip enetered by user
 const validateIp = (ip: string): boolean => {
- if (ip === UDP_SERVER.MY_IP_ADDRESS || ip === BROADCAST_ADDR) return false;
- Object.keys(UDP_SERVER.ACTIVE_USERS).forEach((key) => {
-  if (UDP_SERVER.ACTIVE_USERS[key].ipAddr === ip) return true;
- });
+ const keys = Object.keys(UDP_SERVER.ACTIVE_USERS);
+ for (let i = 0; i < keys.length; i++) {
+  if (UDP_SERVER.ACTIVE_USERS[keys[i]].ipAddr == ip) return true;
+  else console.log(UDP_SERVER.ACTIVE_USERS[keys[i]].ipAddr);
+ }
  return false;
 };
 
-//creating a UDP server
-const UDP_SERVER = new UDPSever(BROADCAST_ADDR, USER_NAME, USER_ID);
+const startServer = async () => {
+ await takeBroadcastIp();
 
-//creating a TCP server
-const TCP_SERVER = new TCPserver(USER_NAME, USER_ID);
+ //creating a UDP server
+ UDP_SERVER = new UDPSever(BROADCAST_ADDR, USER_NAME, USER_ID);
 
-setTimeout(() => {
- (async () => await prompt())();
-}, 2000);
+ //creating a TCP server
+ TCP_SERVER = new TCPserver(USER_NAME, USER_ID);
 
-// setTimeout(() => {
-//  const firstUserIP =
-//   UDP_SERVER.ACTIVE_USERS[Object.keys(UDP_SERVER.ACTIVE_USERS)[0]].ipAddr;
-//  TCP_SERVER.sendToTCPServer(`Hello mate how are you ${USER_NAME}`, firstUserIP);
-// }, 10000);
+ setTimeout(() => {
+  (async () => await prompt())();
+ }, 2000);
+};
+
+startServer();
 
 //handling server close cases
 async function exitHandler(options: any, exitCode: any) {

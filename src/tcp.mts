@@ -9,6 +9,7 @@ import {
  CHAT_MESSAGE_LAST,
  CHAT_MESSAGE_NEXT,
 } from './constant.mjs';
+import chalk from 'chalk';
 
 //TCP packet structure
 //sampleJsonObj = {
@@ -71,7 +72,7 @@ export class TCPserver {
    //when a client connects connects to the tcp server, get a connection socket from we can listen for message and write message to the client
 
    let packetObjRecevied: tcpPacket;
-   let chatMessage: string;
+   let chatMessage: string = '';
    let CLIENT_USER_NAME: string;
 
    console.log(socket.remoteAddress, 'connected to TCP server');
@@ -131,11 +132,15 @@ export class TCPserver {
     let bread = socket.bytesRead;
     let bwrite = socket.bytesWritten;
     console.log(
-     'Bytes read : ' + bread,
-     'Bytes written : ' + bwrite,
-     'Socket closed!',
+     chalk.green('Bytes read : ' + bread),
+     chalk.green('Bytes written : ' + bwrite),
+     chalk.green('Socket closed!'),
     );
-    console.log('Message from client', CLIENT_USER_NAME, chatMessage);
+    console.log(
+     chalk.bgMagenta('Message from client'),
+     chalk.yellow(CLIENT_USER_NAME),
+     chalk.blue(chatMessage),
+    );
     // try {
     //  const tcpPakcet: tcpPacket = await this.parseToJson(data);
     //  console.log(tcpPakcet);
@@ -211,7 +216,7 @@ export class TCPserver {
    socket.on('data', async (data: string) => {
     try {
      const tcpPakcet: tcpPacket = await this.parseToJson(data);
-     console.log(tcpPakcet);
+     //  console.log(tcpPakcet);
      if (tcpPakcet.pktType === TCP_PACKET_RECEVIED) {
       // if packet recevied by server successfully
       socket.end();
