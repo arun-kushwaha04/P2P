@@ -188,36 +188,15 @@ export class TCPserver {
  }
 
  //client to send packet to tcp server
- public sendToTCPServer(message: string, clientIP: string) {
-  let sindex = 0;
-  let eindex = 0;
-  let buffer: string;
-  const socket: TCPSocket = net.connect(
-   { port: TCP_SERVER_PORT, host: clientIP },
-   () => {
-    [buffer, eindex] = this.generateBufferChunk(message, sindex);
-    if (eindex === message.length)
-     this.sendTCPPacket(socket, CHAT_MESSAGE_LAST, buffer, 'chat message last');
-    else this.sendTCPPacket(socket, CHAT_MESSAGE, buffer, 'chat message');
-   },
-  );
-  socket.setEncoding('utf8');
-  socket.on('data', async (data: string) => {
-   try {
-    const tcpPakcet: tcpPacket = await this.parseToJson(data);
-    console.log(tcpPakcet);
-    if (tcpPakcet.pktType === TCP_PACKET_RECEVIED) {
-     // if packet recevied by server successfully
-     socket.end();
-    } else if (tcpPakcet.pktType === TCP_PACKET_ERROR) {
-     //some error in sending the packet
-     socket.end();
-     //resending the packet to server
-     this.sendToTCPServer(message, clientIP);
-    } else if (tcpPakcet.pktType === CHAT_MESSAGE_NEXT) {
-     sindex = eindex;
+ public sendToTCPServer(message: string, clientIP: string): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+   let sindex = 0;
+   let eindex = 0;
+   let buffer: string;
+   const socket: TCPSocket = net.connect(
+    { port: TCP_SERVER_PORT, host: clientIP },
+    () => {
      [buffer, eindex] = this.generateBufferChunk(message, sindex);
-     console.log(buffer, eindex);
      if (eindex === message.length)
       this.sendTCPPacket(
        socket,
@@ -226,13 +205,43 @@ export class TCPserver {
        'chat message last',
       );
      else this.sendTCPPacket(socket, CHAT_MESSAGE, buffer, 'chat message');
-    } else {
-     throw new Error('Unhandled tcp packet type');
+    },
+   );
+   socket.setEncoding('utf8');
+   socket.on('data', async (data: string) => {
+    try {
+     const tcpPakcet: tcpPacket = await this.parseToJson(data);
+     console.log(tcpPakcet);
+     if (tcpPakcet.pktType === TCP_PACKET_RECEVIED) {
+      // if packet recevied by server successfully
+      socket.end();
+      resolve('Message sent successfully');
+     } else if (tcpPakcet.pktType === TCP_PACKET_ERROR) {
+      //some error in sending the packet
+      socket.end();
+      //resending the packet to server
+      this.sendToTCPServer(message, clientIP);
+     } else if (tcpPakcet.pktType === CHAT_MESSAGE_NEXT) {
+      sindex = eindex;
+      [buffer, eindex] = this.generateBufferChunk(message, sindex);
+      console.log(buffer, eindex);
+      if (eindex === message.length)
+       this.sendTCPPacket(
+        socket,
+        CHAT_MESSAGE_LAST,
+        buffer,
+        'chat message last',
+       );
+      else this.sendTCPPacket(socket, CHAT_MESSAGE, buffer, 'chat message');
+     } else {
+      throw new Error('Unhandled tcp packet type');
+     }
+    } catch (error) {
+     console.log('Invalid tcp packet from the server', error);
+     socket.end();
+     reject('Failed to send message');
     }
-   } catch (error) {
-    console.log('Invalid tcp packet from the server', error);
-   }
-   return;
+   });
   });
  }
 
