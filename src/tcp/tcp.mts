@@ -1,7 +1,7 @@
 //creating tcp connections for sending message between clinets
 import net, { Server, Socket as TCPSocket } from 'net';
 
-import { TCP_SERVER_PORT } from '../constant.mjs';
+import { TCP_SERVER_PORT } from '../utils/constant.mjs';
 import { closeListenerServer, dataListenerServer } from './tcpserver.mjs';
 import { dataListenerClient, sendMessageChunk } from './tcpclient.mjs';
 

@@ -4,6 +4,8 @@
 export const UDP_SERVER_PORT: number = 10500;
 export const UDP_CLIENT_PORT: number = 10501;
 export const TCP_SERVER_PORT: number = 11500;
+export const TCP_PACKET_SIZE: number = 5000;
+export const MAX_TRIES: number = 5;
 
 //udp packets constants
 export const UDP_PING: number = 1;
@@ -19,5 +21,3 @@ export const CHAT_MESSAGE_NEXT: number = 4;
 export const CHAT_MESSAGE_LAST: number = 5;
 export const CHECKSUM_ERROR: number = 6;
 export const CHAT_MESSAGE_RESET: number = 5;
-
-export const MAX_TRIES: number = 5;

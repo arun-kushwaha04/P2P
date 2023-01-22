@@ -9,7 +9,7 @@ import {
  CHECKSUM_ERROR,
  TCP_PACKET_ERROR,
  TCP_PACKET_RECEVIED,
-} from '../constant.mjs';
+} from '../utils/constant.mjs';
 import { generateChunkHash, parseToJson, sendTCPPacket } from './tcputils.mjs';
 import chalk from 'chalk';
 

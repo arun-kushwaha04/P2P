@@ -8,7 +8,8 @@ import {
  MAX_TRIES,
  TCP_PACKET_ERROR,
  TCP_PACKET_RECEVIED,
-} from '../constant.mjs';
+ TCP_PACKET_SIZE,
+} from '../utils/constant.mjs';
 import { generateChunkHash, parseToJson, sendTCPPacket } from './tcputils.mjs';
 import { tcpPacket } from './tcp.mjs';
 
@@ -108,9 +109,9 @@ export function generateBufferChunk(
  let string = '';
  let idx = startIdx;
  let size = 0;
- while (bufferSreamLength < 5000 && idx < message.length) {
+ while (bufferSreamLength < TCP_PACKET_SIZE && idx < message.length) {
   size = Buffer.byteLength(message[idx], 'utf8');
-  if (size + bufferSreamLength <= 5000) {
+  if (size + bufferSreamLength <= TCP_PACKET_SIZE) {
    bufferSreamLength += size;
    string += message[idx];
    idx++;

@@ -4,7 +4,7 @@ import { program } from 'commander';
 import inquirer from 'inquirer';
 import { v4 as uuidv4 } from 'uuid';
 import { exit } from 'process';
-import { UDPSever, peerInfo } from './udp.mjs';
+import { UDPSever, peerInfo } from './udp/udp.mjs';
 import { TCPserver } from './tcp/tcp.mjs';
 import chalk from 'chalk';
 
