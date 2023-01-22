@@ -17,5 +17,7 @@ export const TCP_PACKET_ERROR: number = 2;
 export const CHAT_MESSAGE: number = 3;
 export const CHAT_MESSAGE_NEXT: number = 4;
 export const CHAT_MESSAGE_LAST: number = 5;
+export const CHECKSUM_ERROR: number = 6;
+export const CHAT_MESSAGE_RESET: number = 5;
 
-//tcp packets constants
+export const MAX_TRIES: number = 5;

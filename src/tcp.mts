@@ -1,5 +1,7 @@
 //creating tcp connections for sending message between clinets
 import net, { Server, Socket as TCPSocket } from 'net';
+import chalk from 'chalk';
+import crypto from 'crypto';
 
 import {
  TCP_SERVER_PORT,
@@ -8,8 +10,10 @@ import {
  CHAT_MESSAGE,
  CHAT_MESSAGE_LAST,
  CHAT_MESSAGE_NEXT,
+ CHECKSUM_ERROR,
+ MAX_TRIES,
+ CHAT_MESSAGE_RESET,
 } from './constant.mjs';
-import chalk from 'chalk';
 
 //TCP packet structure
 //sampleJsonObj = {
@@ -21,6 +25,7 @@ import chalk from 'chalk';
 export interface payload {
  data: any;
  message: string;
+ checksum: any;
 }
 
 interface tcpPacket {
@@ -72,7 +77,7 @@ export class TCPserver {
    //when a client connects connects to the tcp server, get a connection socket from we can listen for message and write message to the client
 
    let packetObjRecevied: tcpPacket;
-   let chatMessage: string = '';
+   let chatMessage: string | null = null;
    let CLIENT_USER_NAME: string;
 
    console.log(socket.remoteAddress, 'connected to TCP server');
@@ -90,24 +95,45 @@ export class TCPserver {
       null,
       'request for next chat message',
      );
+     if (!chatMessage) chatMessage = '';
      chatMessage += packetObjRecevied.payload?.data;
     } else if (packetObjRecevied.pktType === CHAT_MESSAGE_LAST) {
-     this.sendTCPPacket(
-      socket,
-      TCP_PACKET_RECEVIED,
-      null,
-      'recevied chat message',
-     );
+     if (!chatMessage) chatMessage = '';
      chatMessage += packetObjRecevied.payload?.data;
      CLIENT_USER_NAME = packetObjRecevied.clientUserName;
+     const genreatedHash = this.generateChunkHash(chatMessage as string);
+     if (genreatedHash === packetObjRecevied.payload?.checksum) {
+      this.sendTCPPacket(
+       socket,
+       TCP_PACKET_RECEVIED,
+       null,
+       'recevied chat message',
+      );
+     } else {
+      chatMessage = null;
+      this.sendTCPPacket(
+       socket,
+       CHECKSUM_ERROR,
+       null,
+       'message hash not matched',
+      );
+     }
+    } else if (packetObjRecevied.pktType === CHAT_MESSAGE_RESET) {
+     chatMessage = null;
+     this.sendTCPPacket(
+      socket,
+      CHAT_MESSAGE_NEXT,
+      null,
+      'request for next chat message',
+     );
     } else {
+     chatMessage = null;
      this.sendTCPPacket(
       socket,
       TCP_PACKET_ERROR,
       null,
       'invalid protocol used',
      );
-     chatMessage = '';
     }
    });
 
@@ -136,16 +162,17 @@ export class TCPserver {
      chalk.green('Bytes written : ' + bwrite),
      chalk.green('Socket closed!'),
     );
-    console.log(
-     chalk.bgMagenta('Message from client'),
-     chalk.yellow(CLIENT_USER_NAME),
-     chalk.blue(chatMessage),
-    );
+    if (chatMessage) {
+     console.log(
+      chalk.bgMagenta('Message from client'),
+      chalk.yellow(CLIENT_USER_NAME),
+      chalk.blue(chatMessage),
+     );
+    }
     // try {
     //  const tcpPakcet: tcpPacket = await this.parseToJson(data);
     //  console.log(tcpPakcet);
     //  this.sendTCPPacket(socket, TCP_PACKET_RECEVIED, null);
-    //  //TODO: checksum here sendTCPPacket(socket, TCP_PACKET_ERROR, null);
     // } catch (error) {
     //  this.sendTCPPacket(socket, TCP_PACKET_ERROR, null);
     //  throw new Error('Invalid packet type');
@@ -164,8 +191,9 @@ export class TCPserver {
   pktType: number,
   buffer: string | null,
   message: string,
+  hash: string | null = null,
  ): boolean {
-  return socket.write(this.genreateTcpPktToStr(pktType, buffer, message));
+  return socket.write(this.genreateTcpPktToStr(pktType, buffer, message, hash));
  }
 
  //send a tcp packet from the open socket
@@ -173,12 +201,13 @@ export class TCPserver {
   pktType: number,
   data: any,
   message: string,
+  hash: string | null = null,
  ): string {
   const objToSend: tcpPacket = {
    pktType,
    clientId: this.USER_ID,
    clientUserName: this.USER_NAME!,
-   payload: { data, message },
+   payload: { data, message, checksum: hash },
    currTime: new Date(),
   };
   return JSON.stringify(objToSend);
@@ -198,9 +227,11 @@ export class TCPserver {
    let sindex = 0;
    let eindex = 0;
    let buffer: string;
+   let tries = 0;
    const socket: TCPSocket = net.connect(
     { port: TCP_SERVER_PORT, host: clientIP },
     () => {
+     tries++;
      [buffer, eindex] = this.generateBufferChunk(message, sindex);
      if (eindex === message.length)
       this.sendTCPPacket(
@@ -208,6 +239,7 @@ export class TCPserver {
        CHAT_MESSAGE_LAST,
        buffer,
        'chat message last',
+       this.generateChunkHash(message),
       );
      else this.sendTCPPacket(socket, CHAT_MESSAGE, buffer, 'chat message');
     },
@@ -238,6 +270,17 @@ export class TCPserver {
         'chat message last',
        );
       else this.sendTCPPacket(socket, CHAT_MESSAGE, buffer, 'chat message');
+     } else if (tcpPakcet.pktType === CHECKSUM_ERROR) {
+      if (tries < MAX_TRIES) {
+       tries++;
+       reset();
+       console.log('Cehcksum failed retrying to send message');
+       this.sendTCPPacket(socket, CHAT_MESSAGE_RESET, null, 'reset everything');
+       return;
+      }
+      console.log('Failed to send chat message retry after some time');
+      //ending current connection
+      socket.end();
      } else {
       throw new Error('Unhandled tcp packet type');
      }
@@ -247,6 +290,10 @@ export class TCPserver {
      reject('Failed to send message');
     }
    });
+   const reset = () => {
+    sindex = 0;
+    eindex = 0;
+   };
   });
  }
 
@@ -280,5 +327,11 @@ export class TCPserver {
     reject(error);
    }
   });
+ }
+
+ private generateChunkHash(chunk: string): string {
+  let hash = crypto.createHash('sha256');
+  hash.update(chunk);
+  return hash.digest().toString();
  }
 }
