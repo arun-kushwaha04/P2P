@@ -5,7 +5,7 @@ import inquirer from 'inquirer';
 import { v4 as uuidv4 } from 'uuid';
 import { exit } from 'process';
 import { UDPSever, peerInfo } from './udp.mjs';
-import { TCPserver } from './tcp.mjs';
+import { TCPserver } from './tcp/tcp.mjs';
 import chalk from 'chalk';
 
 export let BROADCAST_ADDR = '172.17.255.255';
@@ -128,7 +128,7 @@ const startServer = async () => {
  UDP_SERVER = new UDPSever(BROADCAST_ADDR, USER_NAME, USER_ID);
 
  //creating a TCP server
- TCP_SERVER = new TCPserver(USER_NAME, USER_ID);
+ TCP_SERVER = new TCPserver();
 
  setTimeout(() => {
   (async () => await prompt())();
