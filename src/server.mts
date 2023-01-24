@@ -7,6 +7,7 @@ import { exit } from 'process';
 import { UDPSever, peerInfo } from './udp/udp.mjs';
 import { TCPserver } from './tcp/tcp.mjs';
 import chalk from 'chalk';
+import { File } from './files/index.mjs';
 
 export let BROADCAST_ADDR = '172.17.255.255';
 export const USER_NAME: string | null | undefined = process.argv[2];
@@ -122,6 +123,9 @@ const validateIp = (ip: string): boolean => {
 };
 
 const startServer = async () => {
+ //intalizing the p2p file structure
+ new File();
+
  await takeBroadcastIp();
 
  //creating a UDP server

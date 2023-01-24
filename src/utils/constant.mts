@@ -1,10 +1,11 @@
+import path from 'path';
 //defining server contantas here
 
 //application constans
-export const UDP_SERVER_PORT: number = 10500;
-export const UDP_CLIENT_PORT: number = 10501;
-export const TCP_SERVER_PORT: number = 11500;
+export const UDP_SERVER_PORT: number = 1050;
+export const TCP_SERVER_PORT: number = 1150;
 export const TCP_PACKET_SIZE: number = 5000;
+export const GRAPHQL_SERVER_PORT: number = 1051;
 export const MAX_TRIES: number = 5;
 
 //udp packets constants
@@ -21,3 +22,9 @@ export const CHAT_MESSAGE_NEXT: number = 4;
 export const CHAT_MESSAGE_LAST: number = 5;
 export const CHECKSUM_ERROR: number = 6;
 export const CHAT_MESSAGE_RESET: number = 5;
+
+//file constant
+export const P2P_FOLDER = path.normalize('~/P2P');
+export const P2P_FILE = path.normalize(`${P2P_FOLDER}/shared.json`);
+export const TEMP_FOLDER = path.normalize('~/P2P/temp');
+export const DOWNLOAD_FOLDER = path.normalize('~/P2P/downloads');
