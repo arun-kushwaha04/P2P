@@ -21,7 +21,9 @@
     },
     "homepage": "https://github.com/arun-kushwaha04/P2P#readme",
     "devDependencies": {
+        "@types/event-stream": "^4.0.0",
         "@types/inquirer": "^9.0.3",
+        "@types/mime-types": "^2.1.1",
         "@types/uuid": "^9.0.0",
         "nodemon": "^2.0.20",
         "ts-node": "^10.9.1",
@@ -33,8 +35,11 @@
         "chalk": "^5.2.0",
         "commander": "^10.0.0",
         "crypto": "^1.0.1",
+        "event-stream": "^4.0.1",
         "fs-path": "^0.0.25",
         "inquirer": "^9.1.4",
+        "mime-types": "^2.1.35",
+        "mongoose": "^6.9.0",
         "node-json-db": "^2.1.3",
         "uuid": "^9.0.0"
     }

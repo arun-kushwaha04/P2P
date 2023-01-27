@@ -126,17 +126,17 @@ const startServer = async () => {
  //intalizing the p2p file structure
  new File();
 
- await takeBroadcastIp();
+ //  await takeBroadcastIp();
 
  //creating a UDP server
- UDP_SERVER = new UDPSever(BROADCAST_ADDR, USER_NAME, USER_ID);
+ //  UDP_SERVER = new UDPSever(BROADCAST_ADDR, USER_NAME, USER_ID);
 
  //creating a TCP server
- TCP_SERVER = new TCPserver();
+ //  TCP_SERVER = new TCPserver();
 
- setTimeout(() => {
-  (async () => await prompt())();
- }, 2000);
+ //  setTimeout(() => {
+ //   (async () => await prompt())();
+ //  }, 2000);
 };
 
 startServer();
