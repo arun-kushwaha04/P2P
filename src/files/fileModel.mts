@@ -25,6 +25,10 @@ const file = new mongoose.Schema({
   type: 'string',
   require: true,
  },
+ isFolder: {
+  type: Boolean,
+  require: true,
+ },
 });
 
 export default mongoose.model('File', file);
