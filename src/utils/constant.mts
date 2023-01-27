@@ -7,7 +7,7 @@ export const TCP_SERVER_PORT: number = 1150;
 export const TCP_PACKET_SIZE: number = 5000;
 export const GRAPHQL_SERVER_PORT: number = 1051;
 export const MAX_TRIES: number = 5;
-export const FILE_STREAM_SIZE: number = 536870912;
+export const FILE_STREAM_SIZE: number = 1024 * 1024 * 50;
 
 //udp packets constants
 export const UDP_PING: number = 1;
