@@ -3,8 +3,8 @@ import mongoose, { ConnectOptions } from 'mongoose';
 const DB_CONNECTION_STRING = 'mongodb://127.0.0.1:27017/P2P';
 
 mongoose.set({ strictQuery: false });
-export const connectToDB = () => {
- mongoose.connect(`${DB_CONNECTION_STRING}`, {
+export const connectToDB = async () => {
+ await mongoose.connect(`${DB_CONNECTION_STRING}`, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
  } as ConnectOptions);

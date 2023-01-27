@@ -10,9 +10,9 @@ import { Hash, createHash } from 'crypto';
 
 export class File {
  constructor() {
-  // connectToDB();
+  connectToDB();
   // this.shareFile('/home/dawn_89/Downloads/1200477.jpg');
-  this.shareFile('/home/dawn_89/Downloads/');
+  // this.shareFile('/home/dawn_89/Downloads/');
   // this.shareFile('/home/dawn_89/Downloads/ubuntu-22.04.1-desktop-amd64.iso');
  }
 
@@ -55,7 +55,7 @@ export class File {
          fileHash,
          isFolder: true,
         });
-        console.log(file);
+        file.save();
         console.log(chalk.bgGreen('Folder shared in the network'));
         resolve({ fileHash, fileSize });
        });
@@ -71,7 +71,7 @@ export class File {
           fileHash,
           isFolder: false,
          });
-         // console.log(file);
+         file.save();
          console.log(chalk.bgGreen('File shared in the network'));
          resolve({ fileHash, fileSize });
         })
@@ -112,5 +112,15 @@ export class File {
    });
    worker.on('exit', () => console.log('worker exit'));
   });
+ }
+
+ public async searchFile(searchQuery: string) {
+  const file = await FileModel.find(
+   {
+    fileName: { $regex: searchQuery, $options: 'i' },
+   },
+   '-filePath',
+  );
+  console.log(file);
  }
 }

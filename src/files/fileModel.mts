@@ -12,6 +12,7 @@ const file = new mongoose.Schema({
  filePath: {
   type: 'string',
   require: true,
+  unique: true,
  },
  fileMimeType: {
   type: 'string',
