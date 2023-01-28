@@ -12,8 +12,9 @@ import { File } from './files/index.mjs';
 export let BROADCAST_ADDR = '172.17.255.255';
 export const USER_NAME: string | null | undefined = process.argv[2];
 export const USER_ID = uuidv4();
-let UDP_SERVER: UDPSever;
-let TCP_SERVER: TCPserver;
+export let UDP_SERVER: UDPSever;
+export let TCP_SERVER: TCPserver;
+export let FILE_MANAGER: File;
 
 if (!USER_NAME) {
  throw new Error('Pass argument for username');
@@ -124,15 +125,15 @@ const validateIp = (ip: string): boolean => {
 
 const startServer = async () => {
  //intalizing the p2p file structure
- new File();
+ FILE_MANAGER = new File();
 
- //  await takeBroadcastIp();
+ await takeBroadcastIp();
 
- //creating a UDP server
- //  UDP_SERVER = new UDPSever(BROADCAST_ADDR, USER_NAME, USER_ID);
+ //  creating a UDP server
+ UDP_SERVER = new UDPSever(BROADCAST_ADDR, USER_NAME, USER_ID);
 
- //creating a TCP server
- //  TCP_SERVER = new TCPserver();
+ //  creating a TCP server
+ TCP_SERVER = new TCPserver();
 
  //  setTimeout(() => {
  //   (async () => await prompt())();

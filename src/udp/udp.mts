@@ -8,6 +8,8 @@ import {
  CLOSING_PEER,
  FILE_SEARCH_QUERY,
 } from '../utils/constant.mjs';
+import chalk from 'chalk';
+import { FILE_MANAGER } from '../server.mjs';
 
 export interface peerInfo {
  ipAddr: string;
@@ -40,12 +42,6 @@ interface udpPacket {
 
 export class UDPSever {
  //this protcol transfer data in form of valid json objects stringified as strings.
- //sampleJsonObj = {
- // pktType: 'NEW_CONNECTION' denotes type of packet,
- // clientId: USER_NAME, unique username of client sending the packet
- // currTime: new Date().getTime(), time when the packet was sended
- // payload: null, packet metadata
- // }
  private BROADCAST_ADDR: string;
  private USER_NAME: string;
  private USER_ID: string;
@@ -79,20 +75,6 @@ export class UDPSever {
 
   return server;
  }
-
- // function createUDPClient() {
- //  // this client will handle all incoming UDP request
- //  // NEW_PEER
- //  // CLOSING_PEER
- //  // FILE_SEARCH_QUERY
- //  let client = dgram.createSocket('udp4');
-
- //  client.bind(UDP_CLIENT_PORT, () => {
- //   console.log('UDP client running', "Peer's username -", USER_NAME);
- //   server.setBroadcast(true);
- //  });
- //  return client;
- // }
 
  private addListenerToUDPSocket() {
   // adding handler to handle request on udp server port
@@ -148,6 +130,11 @@ export class UDPSever {
     }
    } else if (packetObjRecevied.pktType === FILE_SEARCH_QUERY) {
     //TODO:
+    console.log(
+     chalk.blue('New file search query'),
+     chalk.green(packetObjRecevied.clientId),
+    );
+    FILE_MANAGER.shareFile(packetObjRecevied.payload?.data);
    } else {
     throw new Error('Invalid packet recevied');
    }
@@ -245,5 +232,28 @@ export class UDPSever {
    packet.ipInfo.clientIpAddr,
    callback,
   );
+ };
+
+ public sendFileSearchQuery = (
+  queryString: string,
+  peerIPAddr: string,
+ ): void => {
+  const objToSend: udpPacket = {
+   pktType: FILE_SEARCH_QUERY,
+   clientId: this.USER_ID,
+   clientUserName: this.USER_NAME,
+   currTime: new Date(),
+   payload: {
+    data: queryString,
+    message: 'Please search for this file',
+   },
+   ipInfo: {
+    senderPort: UDP_SERVER_PORT,
+    senderIpAddr: this.MY_IP_ADDRESS,
+    clientPort: UDP_SERVER_PORT,
+    clientIpAddr: peerIPAddr,
+   },
+  };
+  this.sendUdpPacket(objToSend);
  };
 }

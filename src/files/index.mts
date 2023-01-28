@@ -121,6 +121,6 @@ export class File {
    },
    '-filePath',
   );
-  console.log(file);
+  return file;
  }
 }

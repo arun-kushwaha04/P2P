@@ -1,9 +1,9 @@
 import { Socket } from 'net';
 import {
- CHAT_MESSAGE,
- CHAT_MESSAGE_LAST,
- CHAT_MESSAGE_NEXT,
- CHAT_MESSAGE_RESET,
+ TCP_MESSAGE,
+ TCP_MESSAGE_LAST,
+ TCP_MESSAGE_NEXT,
+ TCP_MESSAGE_RESET,
  CHECKSUM_ERROR,
  MAX_TRIES,
  TCP_PACKET_ERROR,
@@ -34,12 +34,12 @@ export function sendMessageChunk(
  if (eindex === message.length)
   sendTCPPacket(
    socket,
-   CHAT_MESSAGE_LAST,
+   TCP_MESSAGE_LAST,
    buffer,
    'chat message last',
    generateChunkHash(message),
   );
- else sendTCPPacket(socket, CHAT_MESSAGE, buffer, 'chat message');
+ else sendTCPPacket(socket, TCP_MESSAGE, buffer, 'chat message');
 }
 
 export async function dataListenerClient(
@@ -70,7 +70,7 @@ export async function dataListenerClient(
    //TODO: update ui
   }
   //server requesting for next tcp packet
-  else if (tcpPakcet.pktType === CHAT_MESSAGE_NEXT) {
+  else if (tcpPakcet.pktType === TCP_MESSAGE_NEXT) {
    setsIndex(leindex);
    sendMessageChunk(socket, message, sindex, incrTries, seteIndex);
   }
@@ -82,7 +82,7 @@ export async function dataListenerClient(
     setsIndex(0);
     console.log('Cehcksum failed retrying to send message');
     //telling server to reset everything on it side.
-    sendTCPPacket(socket, CHAT_MESSAGE_RESET, null, 'reset everything');
+    sendTCPPacket(socket, TCP_MESSAGE_RESET, null, 'reset everything');
    }
    //tried MAX_TRIES but failed to send the message
    console.log('Failed to send chat message retry after some time');
