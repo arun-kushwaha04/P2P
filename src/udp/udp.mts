@@ -134,7 +134,7 @@ export class UDPSever {
      chalk.blue('New file search query'),
      chalk.green(packetObjRecevied.clientId),
     );
-    FILE_MANAGER.shareFile(packetObjRecevied.payload?.data);
+    FILE_MANAGER.searchFile(packetObjRecevied.payload?.data);
    } else {
     throw new Error('Invalid packet recevied');
    }

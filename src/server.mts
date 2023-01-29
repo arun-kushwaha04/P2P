@@ -8,6 +8,7 @@ import { UDPSever, peerInfo } from './udp/udp.mjs';
 import { TCPserver } from './tcp/tcp.mjs';
 import chalk from 'chalk';
 import { File } from './files/index.mjs';
+import { CHAT_MESSAGE } from './utils/constant.mjs';
 
 export let BROADCAST_ADDR = '172.17.255.255';
 export const USER_NAME: string | null | undefined = process.argv[2];
@@ -79,11 +80,7 @@ async function sendChatMessage() {
  ]);
 
  if (validateIp(answers.client_ip)) {
-  try {
-   await TCP_SERVER.sendToTCPServer(answers.message, answers.client_ip);
-  } catch (error) {
-   console.log(chalk.red('Failed to send chat message'));
-  }
+  TCP_SERVER.sendMessage(answers.message, answers.client_ip, CHAT_MESSAGE);
  } else {
   console.log(chalk.red('Invalid ip or peer on online \n'));
  }
@@ -135,9 +132,9 @@ const startServer = async () => {
  //  creating a TCP server
  TCP_SERVER = new TCPserver();
 
- //  setTimeout(() => {
- //   (async () => await prompt())();
- //  }, 2000);
+ setTimeout(() => {
+  (async () => await prompt())();
+ }, 2000);
 };
 
 startServer();

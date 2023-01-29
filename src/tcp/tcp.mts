@@ -1,7 +1,8 @@
 //creating tcp connections for sending message between clinets
 import net, { Server, Socket as TCPSocket } from 'net';
+import chalk from 'chalk';
 
-import { TCP_SERVER_PORT } from '../utils/constant.mjs';
+import { CHAT_MESSAGE, TCP_SERVER_PORT } from '../utils/constant.mjs';
 import { closeListenerServer, dataListenerServer } from './tcpserver.mjs';
 import { dataListenerClient, sendMessageChunk } from './tcpclient.mjs';
 
@@ -24,6 +25,11 @@ export interface tcpPacket {
  clientUserName: string;
  payload: payload | null;
  currTime: Date;
+}
+
+export interface TCPMessage {
+ message: string;
+ type: number;
 }
 export class TCPserver {
  //  private USER_ID: string;
@@ -63,20 +69,20 @@ export class TCPserver {
   this.TCP_SERVER.on('connection', (socket: TCPSocket) => {
    //when a client connects connects to the tcp server, get a connection socket from we can listen for message and write message to the client
 
-   let chatMessage: string | null = null;
+   let tcpMessage: string | null = null;
    let CLIENT_USER_NAME: string;
 
    function setClientName(clientName: string) {
     CLIENT_USER_NAME = clientName;
     return;
    }
-   function setChatMessage(msg: string | null) {
-    if (!chatMessage) chatMessage = '';
-    chatMessage += msg;
+   function setTcpMessage(msg: string | null) {
+    if (!tcpMessage) tcpMessage = '';
+    tcpMessage += msg;
     return;
    }
-   function getChatMessage() {
-    return chatMessage;
+   function getTcpMessage(): string | null {
+    return tcpMessage;
    }
    function getClientName() {
     return CLIENT_USER_NAME;
@@ -91,8 +97,8 @@ export class TCPserver {
    socket.on('data', async (data) =>
     dataListenerServer(
      data,
-     getChatMessage,
-     setChatMessage,
+     getTcpMessage,
+     setTcpMessage,
      setClientName,
      socket,
     ),
@@ -117,7 +123,7 @@ export class TCPserver {
 
    //will trigger when socket closes
    socket.on('close', async (error) => {
-    closeListenerServer(error, socket, getChatMessage, getClientName);
+    closeListenerServer(error, socket, getTcpMessage, getClientName);
    });
   });
  }
@@ -172,6 +178,19 @@ export class TCPserver {
     );
    });
   });
+ }
+
+ public async sendMessage(
+  message: string,
+  clientIpAddr: string,
+  messageType: number,
+ ) {
+  let objToSend: TCPMessage = { message, type: messageType };
+  try {
+   await this.sendToTCPServer(JSON.stringify(objToSend), clientIpAddr);
+  } catch (error) {
+   console.log(chalk.red('Failed to send chat message'));
+  }
  }
 
  public closeTCPServer() {
