@@ -92,13 +92,13 @@ export async function closeListenerServer(
    console.log(
     chalk.bgMagenta('Message from client'),
     chalk.yellow(getClientName()),
-    chalk.blue(messageObj.message),
    );
+   console.log(messageObj.message);
   } else if (messageObj.type === FILE_SEARCH_RESULT) {
    console.log(
     chalk.bgMagenta('File search result from client'),
     chalk.yellow(getClientName()),
-    chalk.blue(messageObj.message),
+    messageObj.message,
    );
   }
  }

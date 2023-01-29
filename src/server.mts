@@ -56,6 +56,7 @@ async function prompt() {
   choices: [
    'View your info',
    'View online peers',
+   'Search a file',
    'Send a chat message\n',
    //  'Exit\n',
   ],
@@ -87,7 +88,20 @@ async function sendChatMessage() {
  return;
 }
 
+const handleFilePrompt = async () => {
+ const answers = await inquirer.prompt([
+  {
+   name: 'fileQuery',
+   type: 'input',
+   message: 'File/folder name, you are looking for\n',
+  },
+ ]);
+ UDP_SERVER.sendFileSearchQuery(answers.fileQuery, BROADCAST_ADDR);
+ return;
+};
+
 async function handleAnswer(choosenValue: string) {
+ console.log(chalk.blue(choosenValue));
  if (choosenValue === 'View your info') {
   console.log(chalk.green("Your's Infomation\n"));
   console.log(chalk.yellow(`User name - ${USER_NAME}\n`));
@@ -104,6 +118,8 @@ async function handleAnswer(choosenValue: string) {
   } else {
    console.log(chalk.bgRed('No online peer found in network'));
   }
+ } else if (choosenValue === 'Search a file') {
+  await handleFilePrompt();
  } else {
   await sendChatMessage();
  }

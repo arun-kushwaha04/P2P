@@ -87,12 +87,14 @@ export class UDPSever {
     throw new Error('Invalid json packet recevied');
    }
 
+   if (packetObjRecevied.clientId === this.USER_ID) {
+    if (packetObjRecevied.pktType === UDP_PING)
+     this.MY_IP_ADDRESS = rinfo.address;
+    return;
+   }
+
    if (packetObjRecevied.pktType === UDP_PING) {
     //adding the new client to active user object
-    if (packetObjRecevied.clientId === this.USER_ID) {
-     this.MY_IP_ADDRESS = rinfo.address;
-     return;
-    }
     console.log(
      'New peer connected to network',
      "Peer's username - ",
@@ -119,22 +121,24 @@ export class UDPSever {
     };
    } else if (packetObjRecevied.pktType === CLOSING_PEER) {
     //removig the client form active user object
-    if (packetObjRecevied.clientId !== this.USER_ID) {
-     console.log(
-      'A peer is leaving the netwrok',
-      "Peer's username - ",
-      packetObjRecevied.clientUserName,
-      rinfo.address,
-     );
-     delete this.ACTIVE_USERS[packetObjRecevied.clientId];
-    }
+
+    console.log(
+     'A peer is leaving the netwrok',
+     "Peer's username - ",
+     packetObjRecevied.clientUserName,
+     rinfo.address,
+    );
+    delete this.ACTIVE_USERS[packetObjRecevied.clientId];
    } else if (packetObjRecevied.pktType === FILE_SEARCH_QUERY) {
     //TODO:
     console.log(
      chalk.blue('New file search query'),
-     chalk.green(packetObjRecevied.clientId),
+     chalk.green(packetObjRecevied.clientUserName),
     );
-    FILE_MANAGER.searchFile(packetObjRecevied.payload?.data);
+    FILE_MANAGER.searchFile(
+     packetObjRecevied.payload?.data,
+     packetObjRecevied.ipInfo.senderIpAddr,
+    );
    } else {
     throw new Error('Invalid packet recevied');
    }

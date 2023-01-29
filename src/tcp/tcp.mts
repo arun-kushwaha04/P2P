@@ -28,7 +28,7 @@ export interface tcpPacket {
 }
 
 export interface TCPMessage {
- message: string;
+ message: any;
  type: number;
 }
 export class TCPserver {
@@ -181,7 +181,7 @@ export class TCPserver {
  }
 
  public async sendMessage(
-  message: string,
+  message: any,
   clientIpAddr: string,
   messageType: number,
  ) {

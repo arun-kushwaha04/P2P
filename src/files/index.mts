@@ -7,6 +7,8 @@ import { connectToDB } from './db.mjs';
 import FileModel from './fileModel.mjs';
 import { Worker } from 'worker_threads';
 import { Hash, createHash } from 'crypto';
+import { TCP_SERVER } from '../server.mjs';
+import { FILE_SEARCH_RESULT } from '../utils/constant.mjs';
 
 export class File {
  constructor() {
@@ -114,13 +116,14 @@ export class File {
   });
  }
 
- public async searchFile(searchQuery: string) {
+ public async searchFile(searchQuery: string, clientIpAddr: string) {
   const file = await FileModel.find(
    {
     fileName: { $regex: searchQuery, $options: 'i' },
    },
    '-filePath',
   );
-  return file;
+  TCP_SERVER.sendMessage(file, clientIpAddr, FILE_SEARCH_RESULT);
+  return;
  }
 }
