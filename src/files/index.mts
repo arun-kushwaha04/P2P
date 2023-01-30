@@ -9,14 +9,41 @@ import { Worker } from 'worker_threads';
 import { Hash, createHash } from 'crypto';
 import { TCP_SERVER } from '../server.mjs';
 import { FILE_SEARCH_RESULT } from '../utils/constant.mjs';
+import { stringify } from 'querystring';
+
+interface typeInterface {
+ [fileName: string]: string[];
+}
+
+interface hashInterface {
+ [fileType: string]: typeInterface;
+}
+
+interface fileInfoInterface {
+ [fileHash: string]: hashInterface;
+}
 
 export class File {
+ private FILE_SEARCH_RESULT: fileInfoInterface = {};
+ private SEARCH_RUNNING: boolean = false;
+ private CURRENT_FILE_QUERY: string | null = null;
  constructor() {
   connectToDB();
-  // this.shareFile('/home/dawn_89/Downloads/1200477.jpg');
-  // this.shareFile('/home/dawn_89/Downloads/');
-  // this.shareFile('/home/dawn_89/Downloads/ubuntu-22.04.1-desktop-amd64.iso');
  }
+
+ public searchRunning = () => this.SEARCH_RUNNING;
+
+ public startSearch = (fileQuery: string) => {
+  this.CURRENT_FILE_QUERY = fileQuery;
+  this.SEARCH_RUNNING = true;
+ };
+
+ public stopSearch = () => {
+  this.CURRENT_FILE_QUERY = null;
+  this.SEARCH_RUNNING = false;
+
+  console.log(FILE_SEARCH_RESULT);
+ };
 
  public async shareFile(filePath: string) {
   return new Promise<{ fileHash: string; fileSize: number }>(
@@ -123,7 +150,58 @@ export class File {
    },
    '-filePath',
   );
-  TCP_SERVER.sendMessage(file, clientIpAddr, FILE_SEARCH_RESULT);
+  if (file.length > 0) {
+   const searchResult: any = { searchQuery };
+   searchResult.file = file;
+   TCP_SERVER.sendMessage(searchResult, clientIpAddr, FILE_SEARCH_RESULT);
+  }
   return;
+ }
+
+ public async handleFileSearchResult(searchResult: any, peerIPAddr: string) {
+  if (searchResult.searchQuery === this.CURRENT_FILE_QUERY) {
+   //insert this in file query result
+   searchResult.file.forEach(
+    (file: {
+     fileName: string;
+     fileHash: string;
+     fileMimeType: string;
+     fileSize: string;
+     fileExtentsion: string;
+     isFolder: string;
+    }) => {
+     this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion][
+      file.fileName
+     ].push(peerIPAddr);
+     //  if (this.FILE_SEARCH_RESULT[file.fileHash]) {
+     //   if (this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion]) {
+     //    if (
+     //     this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion][
+     //      file.fileName
+     //     ]
+     //    ) {
+     //     this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion][
+     //      file.fileName
+     //     ].push(peerIPAddr);
+     //    } else {
+     //     this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion][
+     //      file.fileName
+     //     ] = [peerIPAddr];
+     //    }
+     //   } else {
+     //    this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion] = {
+     //     [file.fileName]: [peerIPAddr],
+     //    };
+     //   }
+     //  } else {
+     //   this.FILE_SEARCH_RESULT[file.fileHash] = {
+     //    [file.fileExtentsion]: {
+     //     [file.fileName]: [peerIPAddr],
+     //    },
+     //   };
+     //  }
+    },
+   );
+  }
  }
 }

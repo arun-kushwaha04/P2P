@@ -23,6 +23,7 @@ export interface tcpPacket {
  pktType: number;
  clientId: string;
  clientUserName: string;
+ clientIPAddr: string;
  payload: payload | null;
  currTime: Date;
 }
@@ -71,6 +72,7 @@ export class TCPserver {
 
    let tcpMessage: string | null = null;
    let CLIENT_USER_NAME: string;
+   let CLINET_IP_ADDR: string;
 
    function setClientName(clientName: string) {
     CLIENT_USER_NAME = clientName;
@@ -81,11 +83,17 @@ export class TCPserver {
     tcpMessage += msg;
     return;
    }
+   function setClientIPAddr(ipAddr: string): void {
+    CLINET_IP_ADDR = ipAddr;
+   }
    function getTcpMessage(): string | null {
     return tcpMessage;
    }
    function getClientName() {
     return CLIENT_USER_NAME;
+   }
+   function getClientIPAddr() {
+    return CLINET_IP_ADDR;
    }
 
    console.log(socket.remoteAddress, 'connected to TCP server');
@@ -100,6 +108,7 @@ export class TCPserver {
      getTcpMessage,
      setTcpMessage,
      setClientName,
+     setClientIPAddr,
      socket,
     ),
    );
@@ -123,7 +132,13 @@ export class TCPserver {
 
    //will trigger when socket closes
    socket.on('close', async (error) => {
-    closeListenerServer(error, socket, getTcpMessage, getClientName);
+    closeListenerServer(
+     error,
+     socket,
+     getClientIPAddr,
+     getTcpMessage,
+     getClientName,
+    );
    });
   });
  }

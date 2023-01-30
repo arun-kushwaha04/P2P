@@ -14,12 +14,14 @@ import {
 } from '../utils/constant.mjs';
 import { generateChunkHash, parseToJson, sendTCPPacket } from './tcputils.mjs';
 import chalk from 'chalk';
+import { FILE_MANAGER } from '../server.mjs';
 
 export async function dataListenerServer(
  data: Buffer,
  getTcpMessage: () => string | null,
  setTcpMessage: (msg: string | null) => void,
  setClientName: (name: string) => void,
+ setClientIPAddr: (ipAddr: string) => void,
  socket: Socket,
 ) {
  //tcp packet sent by client
@@ -41,12 +43,13 @@ export async function dataListenerServer(
   //updating chat message and client name
   setTcpMessage(packetObjRecevied.payload?.data);
   setClientName(packetObjRecevied.clientUserName);
+  setClientIPAddr(packetObjRecevied.clientIPAddr);
 
   //gnerating sha 256 hash from message recevied
   const genreatedHash = generateChunkHash(getTcpMessage() as string);
   if (genreatedHash === packetObjRecevied.payload?.checksum) {
    //hash mactched, requesting client to close the socket connection
-   sendTCPPacket(socket, TCP_PACKET_RECEVIED, null, 'recevied chat message');
+   sendTCPPacket(socket, TCP_PACKET_RECEVIED, null, 'recevied tcp message');
   } else {
    //hash mismatched requesting client to resend the message
    setTcpMessage(null);
@@ -71,6 +74,7 @@ export async function dataListenerServer(
 export async function closeListenerServer(
  error: boolean,
  socket: Socket,
+ getClientIPAddr: () => string,
  getTcpMessage: () => void,
  getClientName: () => void,
 ) {
@@ -98,8 +102,10 @@ export async function closeListenerServer(
    console.log(
     chalk.bgMagenta('File search result from client'),
     chalk.yellow(getClientName()),
-    messageObj.message,
    );
+   if (FILE_MANAGER.searchRunning()) {
+    FILE_MANAGER.handleFileSearchResult(messageObj.message, getClientIPAddr());
+   }
   }
  }
  if (error) {

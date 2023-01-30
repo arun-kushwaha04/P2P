@@ -258,6 +258,10 @@ export class UDPSever {
     clientIpAddr: peerIPAddr,
    },
   };
+  FILE_MANAGER.startSearch(queryString);
+  setTimeout(() => {
+   FILE_MANAGER.stopSearch();
+  }, 5000);
   this.sendUdpPacket(objToSend);
  };
 }

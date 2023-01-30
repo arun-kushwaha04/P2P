@@ -1,7 +1,7 @@
 import { Socket } from 'net';
 import crypto from 'crypto';
 
-import { USER_ID, USER_NAME } from '../server.mjs';
+import { USER_ID, USER_NAME, UDP_SERVER } from '../server.mjs';
 import { tcpPacket } from './tcp.mjs';
 
 //send a tcp packet from the open socket
@@ -24,6 +24,7 @@ const genreateTcpPktToStr = (
   pktType,
   clientId: USER_ID,
   clientUserName: USER_NAME!,
+  clientIPAddr: UDP_SERVER.MY_IP_ADDRESS,
   payload: { data, message, checksum: hash },
   currTime: new Date(),
  };
