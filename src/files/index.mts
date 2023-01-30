@@ -10,20 +10,37 @@ import { Hash, createHash } from 'crypto';
 import { TCP_SERVER } from '../server.mjs';
 import { FILE_SEARCH_RESULT } from '../utils/constant.mjs';
 
-interface typeInterface {
- [fileName: string]: string[];
-}
+// declare module namespace {
+//  interface typeInterface {
+//   [fileName: string]: string[];
+//  }
 
-interface hashInterface {
- [fileType: string]: typeInterface;
-}
+//  interface hashInterface {
+//   [fileType: string]: typeInterface;
+//  }
 
-interface fileInfoInterface {
- [fileHash: string]: hashInterface;
-}
+//  export interface fileInfoInterface {
+//   [fileHash: string]: hashInterface;
+//  }
+// }
 
+declare module namespace {
+ export interface FileName {
+  [fileName: string]: string[];
+ }
+
+ export interface Filehash {
+  extentsion: { [filetype: string]: FileName };
+  size: string;
+  isFolder: boolean;
+ }
+
+ export interface FileInfoInterface {
+  [filehash: string]: Filehash;
+ }
+}
 export class File {
- private FILE_SEARCH_RESULT: fileInfoInterface = {};
+ private FILE_SEARCH_RESULT: namespace.FileInfoInterface = {};
  private SEARCH_RUNNING: boolean = false;
  private CURRENT_FILE_QUERY: string | null = null;
  constructor() {
@@ -166,55 +183,82 @@ export class File {
      fileMimeType: string;
      fileSize: string;
      fileExtentsion: string;
-     isFolder: string;
+     isFolder: boolean;
     }) => {
-     //  this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion][
-     //   file.fileName
-     //  ].push(peerIPAddr);
      if (this.FILE_SEARCH_RESULT[file.fileHash]) {
-      if (this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion]) {
+      if (
+       this.FILE_SEARCH_RESULT[file.fileHash].extentsion[file.fileExtentsion]
+      ) {
        if (
-        this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion][
+        this.FILE_SEARCH_RESULT[file.fileHash].extentsion[file.fileExtentsion][
          file.fileName
         ]
        ) {
-        this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion][
+        this.FILE_SEARCH_RESULT[file.fileHash].extentsion[file.fileExtentsion][
          file.fileName
         ].push(peerIPAddr);
        } else {
-        this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion][
+        this.FILE_SEARCH_RESULT[file.fileHash].extentsion[file.fileExtentsion][
          file.fileName
         ] = [peerIPAddr];
        }
       } else {
-       this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion] = {
-        [file.fileName]: [peerIPAddr],
-       };
+       this.FILE_SEARCH_RESULT[file.fileHash].extentsion[file.fileExtentsion] =
+        {
+         [file.fileName]: [peerIPAddr],
+        };
       }
      } else {
       this.FILE_SEARCH_RESULT[file.fileHash] = {
-       [file.fileExtentsion]: {
-        [file.fileName]: [peerIPAddr],
+       extentsion: {
+        [file.fileExtentsion]: {
+         [file.fileName]: [peerIPAddr],
+        },
        },
+       size: file.fileSize,
+       isFolder: file.isFolder,
       };
      }
     },
    );
   }
  }
- public getPeerList(fileHash: string) {
+ public getFileInfo(fileHash: string) {
   let peerList: string[] = [];
+  let extensions: { [key: string]: { ext: string; count: number } } = {};
+  let names: { [key: string]: { name: string; count: number } } = {};
 
   if (this.FILE_SEARCH_RESULT[fileHash]) {
    const fileType = Object.keys(this.FILE_SEARCH_RESULT[fileHash]);
    fileType.forEach((key) => {
-    const fileName = Object.keys(this.FILE_SEARCH_RESULT[fileHash][key]);
+    if (extensions[key]) {
+     extensions[key].count++;
+    } else {
+     extensions[key] = { ext: key, count: 1 };
+    }
+    const fileName = Object.keys(
+     this.FILE_SEARCH_RESULT[fileHash].extentsion[key],
+    );
     fileName.forEach((file) => {
-     peerList = [...peerList, ...this.FILE_SEARCH_RESULT[fileHash][key][file]];
+     if (names[file]) {
+      names[file].count++;
+     } else {
+      names[file] = { name: file, count: 1 };
+     }
+     peerList = [
+      ...peerList,
+      ...this.FILE_SEARCH_RESULT[fileHash].extentsion[key][file],
+     ];
     });
    });
   }
 
-  return peerList;
+  return {
+   peerList,
+   extensions,
+   names,
+   size: this.FILE_SEARCH_RESULT[fileHash].size,
+   isFolder: this.FILE_SEARCH_RESULT[fileHash].isFolder,
+  };
  }
 }
