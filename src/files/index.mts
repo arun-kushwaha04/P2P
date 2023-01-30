@@ -9,7 +9,6 @@ import { Worker } from 'worker_threads';
 import { Hash, createHash } from 'crypto';
 import { TCP_SERVER } from '../server.mjs';
 import { FILE_SEARCH_RESULT } from '../utils/constant.mjs';
-import { stringify } from 'querystring';
 
 interface typeInterface {
  [fileName: string]: string[];
@@ -41,8 +40,7 @@ export class File {
  public stopSearch = () => {
   this.CURRENT_FILE_QUERY = null;
   this.SEARCH_RUNNING = false;
-
-  console.log(FILE_SEARCH_RESULT);
+  console.log(this.FILE_SEARCH_RESULT);
  };
 
  public async shareFile(filePath: string) {
@@ -203,5 +201,20 @@ export class File {
     },
    );
   }
+ }
+ public getPeerList(fileHash: string) {
+  let peerList: string[] = [];
+
+  if (this.FILE_SEARCH_RESULT[fileHash]) {
+   const fileType = Object.keys(this.FILE_SEARCH_RESULT[fileHash]);
+   fileType.forEach((key) => {
+    const fileName = Object.keys(this.FILE_SEARCH_RESULT[fileHash][key]);
+    fileName.forEach((file) => {
+     peerList = [...peerList, ...this.FILE_SEARCH_RESULT[fileHash][key][file]];
+    });
+   });
+  }
+
+  return peerList;
  }
 }
