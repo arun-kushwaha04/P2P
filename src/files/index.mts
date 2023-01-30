@@ -170,36 +170,36 @@ export class File {
      fileExtentsion: string;
      isFolder: string;
     }) => {
-     this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion][
-      file.fileName
-     ].push(peerIPAddr);
-     //  if (this.FILE_SEARCH_RESULT[file.fileHash]) {
-     //   if (this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion]) {
-     //    if (
-     //     this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion][
-     //      file.fileName
-     //     ]
-     //    ) {
-     //     this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion][
-     //      file.fileName
-     //     ].push(peerIPAddr);
-     //    } else {
-     //     this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion][
-     //      file.fileName
-     //     ] = [peerIPAddr];
-     //    }
-     //   } else {
-     //    this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion] = {
-     //     [file.fileName]: [peerIPAddr],
-     //    };
-     //   }
-     //  } else {
-     //   this.FILE_SEARCH_RESULT[file.fileHash] = {
-     //    [file.fileExtentsion]: {
-     //     [file.fileName]: [peerIPAddr],
-     //    },
-     //   };
-     //  }
+     //  this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion][
+     //   file.fileName
+     //  ].push(peerIPAddr);
+     if (this.FILE_SEARCH_RESULT[file.fileHash]) {
+      if (this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion]) {
+       if (
+        this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion][
+         file.fileName
+        ]
+       ) {
+        this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion][
+         file.fileName
+        ].push(peerIPAddr);
+       } else {
+        this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion][
+         file.fileName
+        ] = [peerIPAddr];
+       }
+      } else {
+       this.FILE_SEARCH_RESULT[file.fileHash][file.fileExtentsion] = {
+        [file.fileName]: [peerIPAddr],
+       };
+      }
+     } else {
+      this.FILE_SEARCH_RESULT[file.fileHash] = {
+       [file.fileExtentsion]: {
+        [file.fileName]: [peerIPAddr],
+       },
+      };
+     }
     },
    );
   }
