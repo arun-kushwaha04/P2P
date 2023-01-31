@@ -1,6 +1,7 @@
 //fuctions for tcp server
 
 import { Socket } from 'net';
+import { Worker } from 'worker_threads';
 import {
  TCP_MESSAGE,
  TCP_MESSAGE_LAST,
@@ -11,6 +12,7 @@ import {
  TCP_PACKET_RECEVIED,
  CHAT_MESSAGE,
  FILE_SEARCH_RESULT,
+ FILE_CHUNK,
 } from '../utils/constant.mjs';
 import { generateChunkHash, parseToJson, sendTCPPacket } from './tcputils.mjs';
 import chalk from 'chalk';
@@ -91,7 +93,9 @@ export async function closeListenerServer(
  //TODO: handle type of message here
  if (getTcpMessage) {
   //handling the message
-  const messageObj = JSON.parse(getTcpMessage()!);
+  const message = JSON.parse(getTcpMessage()!);
+  // console.log(message);
+  const messageObj = message;
   if (messageObj.type === CHAT_MESSAGE) {
    console.log(
     chalk.bgMagenta('Message from client'),
@@ -106,6 +110,22 @@ export async function closeListenerServer(
    if (FILE_MANAGER.searchRunning()) {
     FILE_MANAGER.handleFileSearchResult(messageObj.message, getClientIPAddr());
    }
+  } else if (messageObj.type === FILE_CHUNK) {
+   const worker = new Worker('./dist/workers/writeFileChunck.mjs', {
+    workerData: {
+     chunckNumber: messageObj.message.chunckNumber,
+     fileBuffer: messageObj.message.fileBuffer,
+     folderName: messageObj.message.folderName,
+    },
+   });
+   worker.on('message', () => {
+    return;
+   });
+   worker.on('error', (msg) => {
+    console.log(msg);
+    return;
+   });
+   worker.on('exit', () => console.log('write worker exit'));
   }
  }
  if (error) {

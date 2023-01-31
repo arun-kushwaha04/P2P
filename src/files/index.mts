@@ -9,6 +9,7 @@ import { Worker } from 'worker_threads';
 import { Hash, createHash } from 'crypto';
 import { TCP_SERVER } from '../server.mjs';
 import { FILE_SEARCH_RESULT } from '../utils/constant.mjs';
+import { CallbackError } from 'mongoose';
 
 // declare module namespace {
 //  interface typeInterface {
@@ -81,7 +82,7 @@ export class File {
         promiseArray.push(this.shareFile(newPath));
        }
 
-       Promise.allSettled(promiseArray).then((results) => {
+       Promise.allSettled(promiseArray).then(async (results) => {
         results.forEach((result) => {
          if (result.status === 'rejected') reject();
          else {
@@ -90,22 +91,19 @@ export class File {
          }
         });
         const fileHash = fhash.digest('hex');
-        const file = new FileModel({
-         fileExtentsion,
-         fileMimeType,
-         fileName,
-         filePath,
-         fileSize: fileSize.toString(),
-         fileHash,
-         isFolder: true,
-        });
-        file.save();
-        console.log(chalk.bgGreen('Folder shared in the network'));
-        resolve({ fileHash, fileSize });
-       });
-      } else {
-       this.generateHash(filePath, fileSize)
-        .then((fileHash) => {
+        const file = await FileModel.findOne({ filePath: filePath });
+        if (file) {
+         file.fileExtentsion = fileExtentsion;
+         file.fileMimeType = fileMimeType.toString();
+         file.fileName = fileName;
+         file.fileSize = fileSize.toString();
+         file.fileHash = fileHash;
+         file.isFolder = true;
+
+         file.save();
+         console.log(chalk.bgGreen('Folder shared in the network'));
+         resolve({ fileHash, fileSize });
+        } else {
          const file = new FileModel({
           fileExtentsion,
           fileMimeType,
@@ -113,11 +111,42 @@ export class File {
           filePath,
           fileSize: fileSize.toString(),
           fileHash,
-          isFolder: false,
+          isFolder: true,
          });
          file.save();
-         console.log(chalk.bgGreen('File shared in the network'));
+         console.log(chalk.bgGreen('Folder shared in the network'));
          resolve({ fileHash, fileSize });
+        }
+       });
+      } else {
+       this.generateHash(filePath, fileSize)
+        .then(async (fileHash) => {
+         const file = await FileModel.findOne({ filePath: filePath });
+         if (file) {
+          file.fileExtentsion = fileExtentsion;
+          file.fileMimeType = fileMimeType.toString();
+          file.fileName = fileName;
+          file.fileSize = fileSize.toString();
+          file.fileHash = fileHash;
+          file.isFolder = false;
+
+          file.save();
+          console.log(chalk.bgGreen('File shared in the network'));
+          resolve({ fileHash, fileSize });
+         } else {
+          const file = new FileModel({
+           fileExtentsion,
+           fileMimeType,
+           fileName,
+           filePath,
+           fileSize: fileSize.toString(),
+           fileHash,
+           isFolder: false,
+          });
+          file.save();
+          console.log(chalk.bgGreen('File shared in the network'));
+          resolve({ fileHash, fileSize });
+         }
         })
         .catch((error) => {
          console.log(error);
@@ -142,7 +171,7 @@ export class File {
  private async generateHash(filePath: string, fileSize: number) {
   //creating a worker thread for hashing calulatoins
   return new Promise<string>(async (resolve, reject) => {
-   const worker = new Worker('./dist/fileHash.mjs', {
+   const worker = new Worker('./dist/workers/fileHash.mjs', {
     workerData: {
      filePath,
     },
@@ -229,7 +258,7 @@ export class File {
   let names: { [key: string]: { name: string; count: number } } = {};
 
   if (this.FILE_SEARCH_RESULT[fileHash]) {
-   const fileType = Object.keys(this.FILE_SEARCH_RESULT[fileHash]);
+   const fileType = Object.keys(this.FILE_SEARCH_RESULT[fileHash].extentsion);
    fileType.forEach((key) => {
     if (extensions[key]) {
      extensions[key].count++;
@@ -260,5 +289,17 @@ export class File {
    size: this.FILE_SEARCH_RESULT[fileHash].size,
    isFolder: this.FILE_SEARCH_RESULT[fileHash].isFolder,
   };
+ }
+
+ public getFilePathAndSize(fileHash: string) {
+  return new Promise<{ filePath: string; fileSize: string }>(
+   async (resolve, reject) => {
+    const file = await FileModel.findOne({ fileHash: fileHash });
+    if (file) {
+     resolve({ filePath: file.filePath!, fileSize: file.fileSize! });
+    }
+    reject(null);
+   },
+  );
  }
 }

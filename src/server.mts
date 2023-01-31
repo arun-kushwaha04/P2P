@@ -9,6 +9,7 @@ import { TCPserver } from './tcp/tcp.mjs';
 import chalk from 'chalk';
 import { File } from './files/index.mjs';
 import { CHAT_MESSAGE } from './utils/constant.mjs';
+import { Downloader } from './downloader/index.mjs';
 
 export let BROADCAST_ADDR = '172.17.255.255';
 export const USER_NAME: string | null | undefined = process.argv[2];
@@ -16,6 +17,7 @@ export const USER_ID = uuidv4();
 export let UDP_SERVER: UDPSever;
 export let TCP_SERVER: TCPserver;
 export let FILE_MANAGER: File;
+export let ACTIVE_DOWNLOADS: { [key: string]: Downloader } = {};
 
 if (!USER_NAME) {
  throw new Error('Pass argument for username');
@@ -57,6 +59,8 @@ async function prompt() {
    'View your info',
    'View online peers',
    'Search a file',
+   'Share a file',
+   'Start a download',
    'Send a chat message\n',
    //  'Exit\n',
   ],
@@ -100,6 +104,32 @@ const handleFilePrompt = async () => {
  return;
 };
 
+const handleShareFilePrompt = async () => {
+ const answers = await inquirer.prompt([
+  {
+   name: 'filePath',
+   type: 'input',
+   message: 'File/folder path, you want to share\n',
+  },
+ ]);
+ FILE_MANAGER.shareFile(answers.filePath);
+ return;
+};
+
+const startDownload = async () => {
+ const answers = await inquirer.prompt([
+  {
+   name: 'fileHash',
+   type: 'input',
+   message: 'File/folder path, you want to share\n',
+  },
+ ]);
+ const dowloaderId = uuidv4();
+ const downloader = new Downloader(answers.fileHash, dowloaderId);
+ ACTIVE_DOWNLOADS[dowloaderId] = downloader;
+ return;
+};
+
 async function handleAnswer(choosenValue: string) {
  console.log(chalk.blue(choosenValue));
  if (choosenValue === 'View your info') {
@@ -120,6 +150,10 @@ async function handleAnswer(choosenValue: string) {
   }
  } else if (choosenValue === 'Search a file') {
   await handleFilePrompt();
+ } else if (choosenValue === 'Share a file') {
+  await handleShareFilePrompt();
+ } else if (choosenValue === 'Start a download') {
+  await startDownload();
  } else {
   await sendChatMessage();
  }
@@ -127,7 +161,7 @@ async function handleAnswer(choosenValue: string) {
 }
 
 // validating ip enetered by user
-const validateIp = (ip: string): boolean => {
+export const validateIp = (ip: string): boolean => {
  const keys = Object.keys(UDP_SERVER.ACTIVE_USERS);
  for (let i = 0; i < keys.length; i++) {
   if (UDP_SERVER.ACTIVE_USERS[keys[i]].ipAddr == ip) return true;

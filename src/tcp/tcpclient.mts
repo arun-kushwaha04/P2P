@@ -45,8 +45,6 @@ export function sendMessageChunk(
 export async function dataListenerClient(
  data: string,
  socket: Socket,
- sindex: number,
- leindex: number,
  message: string,
  resolve: (value: string | PromiseLike<string>) => void,
  reject: (reason?: any) => void,
@@ -54,6 +52,8 @@ export async function dataListenerClient(
  incrTries: () => void,
  seteIndex: (num: number) => void,
  getTries: () => number,
+ getSIndex: () => number,
+ getEIndex: () => number,
 ): Promise<void> {
  try {
   //getting tcp packet recevied from server
@@ -71,8 +71,8 @@ export async function dataListenerClient(
   }
   //server requesting for next tcp packet
   else if (tcpPakcet.pktType === TCP_MESSAGE_NEXT) {
-   setsIndex(leindex);
-   sendMessageChunk(socket, message, sindex, incrTries, seteIndex);
+   setsIndex(getEIndex());
+   sendMessageChunk(socket, message, getSIndex(), incrTries, seteIndex);
   }
   //server recevied altered packet
   else if (tcpPakcet.pktType === CHECKSUM_ERROR) {
@@ -110,6 +110,7 @@ export function generateBufferChunk(
  let idx = startIdx;
  let size = 0;
  while (bufferSreamLength < TCP_PACKET_SIZE && idx < message.length) {
+  //as utf-8 encoding used so a char can be 4 bytes long
   size = Buffer.byteLength(message[idx], 'utf8');
   if (size + bufferSreamLength <= TCP_PACKET_SIZE) {
    bufferSreamLength += size;
@@ -119,5 +120,6 @@ export function generateBufferChunk(
    break;
   }
  }
+ //return idx as new starting index as we already icnreased it
  return [string, idx];
 }

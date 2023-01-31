@@ -5,6 +5,7 @@ import chalk from 'chalk';
 import { CHAT_MESSAGE, TCP_SERVER_PORT } from '../utils/constant.mjs';
 import { closeListenerServer, dataListenerServer } from './tcpserver.mjs';
 import { dataListenerClient, sendMessageChunk } from './tcpclient.mjs';
+import { json } from 'stream/consumers';
 
 //TCP packet structure
 //sampleJsonObj = {
@@ -170,6 +171,12 @@ export class TCPserver {
    function getTries(): number {
     return tries;
    }
+   function getSIndex(): number {
+    return sindex;
+   }
+   function getEIndex(): number {
+    return eindex;
+   }
    const socket: TCPSocket = net.connect(
     { port: TCP_SERVER_PORT, host: clientIP },
     () => {
@@ -181,8 +188,6 @@ export class TCPserver {
     dataListenerClient(
      data,
      socket,
-     sindex,
-     eindex,
      message,
      resolve,
      reject,
@@ -190,6 +195,8 @@ export class TCPserver {
      icnrTries,
      seteIndex,
      getTries,
+     getSIndex,
+     getEIndex,
     );
    });
   });
@@ -201,8 +208,9 @@ export class TCPserver {
   messageType: number,
  ) {
   let objToSend: TCPMessage = { message, type: messageType };
+  const stringObj = JSON.stringify(objToSend);
   try {
-   await this.sendToTCPServer(JSON.stringify(objToSend), clientIpAddr);
+   await this.sendToTCPServer(stringObj, clientIpAddr);
   } catch (error) {
    console.log(chalk.red('Failed to send chat message'));
   }

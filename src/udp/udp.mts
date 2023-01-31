@@ -12,7 +12,7 @@ import {
  CHUNK_TRANSFERED,
 } from '../utils/constant.mjs';
 import chalk from 'chalk';
-import { FILE_MANAGER, TCP_SERVER } from '../server.mjs';
+import { FILE_MANAGER, TCP_SERVER, UDP_SERVER } from '../server.mjs';
 import { createReadStream } from 'fs';
 
 export interface peerInfo {
@@ -147,6 +147,14 @@ export class UDPSever {
      chalk.blue('New file chunk request'),
      chalk.green(packetObjRecevied.clientUserName),
     );
+    console.log(packetObjRecevied.payload?.data);
+    this.sendChunkOnTCP(
+     packetObjRecevied.payload?.data.fileHash,
+     packetObjRecevied.payload?.data.chunckNumber,
+     packetObjRecevied.ipInfo.senderIpAddr,
+     packetObjRecevied.payload?.data.folderName,
+     packetObjRecevied.payload?.data.downloaderId,
+    );
    } else {
     throw new Error('Invalid packet recevied');
    }
@@ -277,6 +285,8 @@ export class UDPSever {
   fileHash: string,
   chunckNumber: number,
   peerIPAddr: string,
+  folderName: string,
+  downloaderId: string,
  ): void {
   const objToSend: udpPacket = {
    pktType: FILE_CHUNK_REQUEST,
@@ -284,7 +294,7 @@ export class UDPSever {
    clientUserName: this.USER_NAME,
    currTime: new Date(),
    payload: {
-    data: { fileHash, chunckNumber },
+    data: { fileHash, chunckNumber, downloaderId, folderName },
     message: 'Please send chunk of this file',
    },
    ipInfo: {
@@ -301,9 +311,15 @@ export class UDPSever {
   fileHash: string,
   chunckNumber: number,
   clientIpAddr: string,
+  folderName: string,
+  downloaderId: string,
  ) {
   const fileBuffer: string = await this.getFileChunk(fileHash, chunckNumber);
-  TCP_SERVER.sendMessage(fileBuffer, clientIpAddr, FILE_CHUNK);
+  TCP_SERVER.sendMessage(
+   { chunckNumber, fileBuffer, folderName, downloaderId },
+   clientIpAddr,
+   FILE_CHUNK,
+  );
  }
 
  private async getFileChunk(fileHash: string, chunckNumber: number) {
@@ -329,7 +345,7 @@ export class UDPSever {
     console.log(msg);
     reject(msg);
    });
-   worker.on('exit', () => console.log('worker exit'));
+   worker.on('exit', () => console.log('create chunk worker exit'));
   });
  }
 }
