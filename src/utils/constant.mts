@@ -11,6 +11,7 @@ export const CHAT_MESSAGE: number = 2342;
 export const FILE_CHUNK: number = 3456;
 export const CHUNK_TRANSFERED: number = 10 * 1024 * 1024;
 export const TEMP_FOLDER: string = '/home/dawn_89/P2P/temp';
+export const DOWNLOAD_FOLDER: string = '/home/dawn_89/P2P/downloads';
 
 //udp packets constants
 export const UDP_PING: number = 1;

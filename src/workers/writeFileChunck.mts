@@ -7,7 +7,7 @@ const ws = fs.createWriteStream(
  path.join(
   TEMP_FOLDER,
   workerData.folderName,
-  `chunck${workerData.chunckNumber}`,
+  `chunk${workerData.chunckNumber}`,
  ),
  { flags: 'w', encoding: 'binary' },
 );

@@ -8,15 +8,19 @@ import {
  UDP_SERVER,
  validateIp,
 } from '../server.mjs';
-import { CHUNK_TRANSFERED, TEMP_FOLDER } from '../utils/constant.mjs';
-import { throws } from 'assert';
+import {
+ CHUNK_TRANSFERED,
+ DOWNLOAD_FOLDER,
+ TEMP_FOLDER,
+} from '../utils/constant.mjs';
+import chalk from 'chalk';
+import { Worker, workerData } from 'worker_threads';
 
 export class Downloader {
  private FOLDER_NAME: string;
  private FILE_HASH: string;
  private PEERS: string[];
- private FILE_NAMES: { [key: string]: { name: string; count: number } };
- private FILE_EXTENTSION: { [key: string]: { ext: string; count: number } };
+ private FILE_NAMES: string[];
  private FILE_SIZE: number;
  private IS_FOLDER: boolean;
  private CHUNK_RECEVIED: number = 0;
@@ -29,7 +33,6 @@ export class Downloader {
   this.FILE_HASH = fileHash;
   const temp = FILE_MANAGER.getFileInfo(fileHash);
   this.PEERS = temp.peerList;
-  this.FILE_EXTENTSION = temp.extensions;
   this.FILE_NAMES = temp.names;
   this.FILE_SIZE = parseInt(temp.size);
   this.IS_FOLDER = temp.isFolder;
@@ -54,8 +57,6 @@ export class Downloader {
   ws.write(this.FILE_HASH);
   ws.write('\n');
   ws.write(this.FILE_SIZE.toString());
-  ws.write('\n');
-  ws.write(JSON.stringify(this.FILE_EXTENTSION));
   ws.write('\n');
   ws.write(JSON.stringify(this.FILE_NAMES.toString()));
   ws.write('\n');
@@ -89,6 +90,10 @@ export class Downloader {
   if (this.CHUNK_LEFT === 0) {
    console.log('Recevied all file chunks');
    delete ACTIVE_DOWNLOADS[this.DOWNLOADER_ID];
+   this.rebuildFile(
+    path.join(TEMP_FOLDER, this.FOLDER_NAME),
+    this.FILE_NAMES[0],
+   );
    return;
   }
 
@@ -108,6 +113,65 @@ export class Downloader {
    this.FOLDER_NAME,
    this.DOWNLOADER_ID,
   );
+ }
+
+ private async rebuildFile(folderPath: string, fileName: string) {
+  fs.mkdirSync(DOWNLOAD_FOLDER, { recursive: true });
+  for (let i = 0; i < this.CHUNK_ARRAY.length; i++) {
+   try {
+    await this.writeToFile(`chunk${i}`, folderPath, fileName);
+   } catch (error) {
+    console.log(chalk.red('Failed to build the file'));
+    fs.unlinkSync(path.join(DOWNLOAD_FOLDER, fileName));
+    fs.unlinkSync(folderPath);
+    return;
+   }
+  }
+
+  //file rebuilded successfully now compare the hash
+  const worker = new Worker('./dist/workers/fileHash.mjs', {
+   workerData: {
+    filePath: path.join(folderPath, fileName),
+   },
+  });
+  worker.on('message', (data) => {
+   if (data.val === this.FILE_HASH) {
+    console.log(chalk.red('Successfully builded the file'));
+    fs.unlinkSync(folderPath);
+    return;
+   } else {
+    console.log(chalk.red('Failed to build the file'));
+    fs.unlinkSync(path.join(DOWNLOAD_FOLDER, fileName));
+    fs.unlinkSync(folderPath);
+    return;
+   }
+  });
+  worker.on('error', (msg) => {
+   console.log(msg);
+   console.log(chalk.red('Failed to build the file'));
+   fs.unlinkSync(path.join(DOWNLOAD_FOLDER, fileName));
+   fs.unlinkSync(folderPath);
+   return;
+  });
+ }
+
+ private writeToFile(chunkName: string, folderPath: string, fileName: string) {
+  return new Promise<void>((resolve, reject) => {
+   const worker = new Worker('./dist/workers/writeFromFileWorker.mjs', {
+    workerData: {
+     folderPath,
+     fileName,
+     chunkName,
+    },
+   });
+   worker.on('message', (data) => {
+    resolve(data.val);
+   });
+   worker.on('error', (msg) => {
+    console.log(msg);
+    reject(msg);
+   });
+  });
  }
 
  private refeshPeerList() {

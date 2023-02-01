@@ -254,26 +254,16 @@ export class File {
  }
  public getFileInfo(fileHash: string) {
   let peerList: string[] = [];
-  let extensions: { [key: string]: { ext: string; count: number } } = {};
-  let names: { [key: string]: { name: string; count: number } } = {};
+  let names: string[] = [];
 
   if (this.FILE_SEARCH_RESULT[fileHash]) {
    const fileType = Object.keys(this.FILE_SEARCH_RESULT[fileHash].extentsion);
    fileType.forEach((key) => {
-    if (extensions[key]) {
-     extensions[key].count++;
-    } else {
-     extensions[key] = { ext: key, count: 1 };
-    }
     const fileName = Object.keys(
      this.FILE_SEARCH_RESULT[fileHash].extentsion[key],
     );
     fileName.forEach((file) => {
-     if (names[file]) {
-      names[file].count++;
-     } else {
-      names[file] = { name: file, count: 1 };
-     }
+     names.push(file);
      peerList = [
       ...peerList,
       ...this.FILE_SEARCH_RESULT[fileHash].extentsion[key][file],
@@ -284,7 +274,6 @@ export class File {
 
   return {
    peerList,
-   extensions,
    names,
    size: this.FILE_SEARCH_RESULT[fileHash].size,
    isFolder: this.FILE_SEARCH_RESULT[fileHash].isFolder,
