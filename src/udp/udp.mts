@@ -14,6 +14,7 @@ import {
 import chalk from 'chalk';
 import { FILE_MANAGER, TCP_SERVER, UDP_SERVER } from '../server.mjs';
 import { createReadStream } from 'fs';
+import { buffer } from 'stream/consumers';
 
 export interface peerInfo {
  ipAddr: string;
@@ -315,6 +316,7 @@ export class UDPSever {
   downloaderId: string,
  ) {
   const fileBuffer: string = await this.getFileChunk(fileHash, chunckNumber);
+  // console.log('File buffer created', fileBuffer);
   TCP_SERVER.sendMessage(
    { chunckNumber, fileBuffer, folderName, downloaderId },
    clientIpAddr,
@@ -339,7 +341,8 @@ export class UDPSever {
     },
    });
    worker.on('message', (data) => {
-    resolve(data.val);
+    if (data.type == 'chunk size') console.log(data.indexs);
+    else resolve(data.val);
    });
    worker.on('error', (msg) => {
     console.log(msg);

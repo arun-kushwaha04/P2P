@@ -9,7 +9,7 @@ const ws = fs.createWriteStream(
   workerData.folderName,
   `chunck${workerData.chunckNumber}`,
  ),
- { flags: 'w' },
+ { flags: 'w', encoding: 'binary' },
 );
 
 ws.write(workerData.fileBuffer, () => {

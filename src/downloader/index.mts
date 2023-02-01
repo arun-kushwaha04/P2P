@@ -65,10 +65,10 @@ export class Downloader {
 
   ws.close();
 
-  let chunkNumber = 1;
+  let chunkNumber = 0;
 
   this.PEERS.forEach((peer) => {
-   if (chunkNumber <= this.CHUNK_LEFT && validateIp(peer)) {
+   if (chunkNumber < this.CHUNK_LEFT && validateIp(peer)) {
     UDP_SERVER.sendChunkRequest(
      this.FILE_HASH,
      chunkNumber,
@@ -98,6 +98,7 @@ export class Downloader {
   }
   let randomChunkNumber = Math.floor(Math.random() * this.CHUNK_ARRAY.length);
   while (this.CHUNK_ARRAY[randomChunkNumber]) {
+   console.log(randomChunkNumber, this.CHUNK_ARRAY[randomChunkNumber]);
    randomChunkNumber = Math.floor(Math.random() * this.CHUNK_ARRAY.length);
   }
   UDP_SERVER.sendChunkRequest(

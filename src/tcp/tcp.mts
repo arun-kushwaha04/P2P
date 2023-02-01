@@ -183,7 +183,7 @@ export class TCPserver {
      sendMessageChunk(socket, message, sindex, icnrTries, seteIndex);
     },
    );
-   socket.setEncoding('utf8');
+   socket.setEncoding('utf-8');
    socket.on('data', async (data: string) => {
     dataListenerClient(
      data,
