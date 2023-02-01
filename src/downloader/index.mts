@@ -40,6 +40,7 @@ export class Downloader {
   this.DOWNLOADER_ID = downloaderId;
   this.CHUNK_ARRAY = new Array(this.CHUNK_LEFT);
   this.FOLDER_NAME = uuidv4();
+  console.log(this.CHUNK_LEFT);
   for (let i = 0; i < this.CHUNK_LEFT; i++) {
    this.CHUNK_ARRAY[i] = false;
   }
@@ -83,6 +84,7 @@ export class Downloader {
  }
 
  public handleReceviedChunk(chunkNumber: number, peerIPAddr: string) {
+  if (this.CHUNK_ARRAY[chunkNumber] == true) return;
   this.CHUNK_ARRAY[chunkNumber] = true;
   this.CHUNK_LEFT--;
   this.CHUNK_RECEVIED++;
@@ -117,6 +119,7 @@ export class Downloader {
 
  private async rebuildFile(folderPath: string, fileName: string) {
   fs.mkdirSync(DOWNLOAD_FOLDER, { recursive: true });
+  fs.closeSync(fs.openSync(path.join(DOWNLOAD_FOLDER, fileName), 'w'));
   for (let i = 0; i < this.CHUNK_ARRAY.length; i++) {
    try {
     await this.writeToFile(`chunk${i}`, folderPath, fileName);
@@ -131,18 +134,18 @@ export class Downloader {
   //file rebuilded successfully now compare the hash
   const worker = new Worker('./dist/workers/fileHash.mjs', {
    workerData: {
-    filePath: path.join(folderPath, fileName),
+    filePath: path.join(DOWNLOAD_FOLDER, fileName),
    },
   });
   worker.on('message', (data) => {
    if (data.val === this.FILE_HASH) {
-    console.log(chalk.red('Successfully builded the file'));
-    fs.unlinkSync(folderPath);
+    console.log(chalk.green('Successfully builded the file'));
+    fs.rmSync(folderPath, { recursive: true, force: true });
     return;
    } else {
     console.log(chalk.red('Failed to build the file'));
     fs.unlinkSync(path.join(DOWNLOAD_FOLDER, fileName));
-    fs.unlinkSync(folderPath);
+    fs.rmSync(folderPath, { recursive: true, force: true });
     return;
    }
   });
@@ -150,7 +153,7 @@ export class Downloader {
    console.log(msg);
    console.log(chalk.red('Failed to build the file'));
    fs.unlinkSync(path.join(DOWNLOAD_FOLDER, fileName));
-   fs.unlinkSync(folderPath);
+   fs.rmSync(folderPath, { recursive: true, force: true });
    return;
   });
  }
