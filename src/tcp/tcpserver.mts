@@ -16,7 +16,7 @@ import {
 } from '../utils/constant.mjs';
 import { generateChunkHash, parseToJson, sendTCPPacket } from './tcputils.mjs';
 import chalk from 'chalk';
-import { FILE_MANAGER } from '../server.mjs';
+import { ACTIVE_DOWNLOADS, FILE_MANAGER } from '../server.mjs';
 
 export async function dataListenerServer(
  data: Buffer,
@@ -125,7 +125,13 @@ export async function closeListenerServer(
     console.log(msg);
     return;
    });
-   worker.on('exit', () => console.log('write worker exit'));
+   worker.on('exit', () => {
+    ACTIVE_DOWNLOADS[messageObj.message.downloaderId].handleReceviedChunk(
+     messageObj.message.chunckNumber,
+     getClientIPAddr(),
+    );
+    console.log('write worker exit');
+   });
   }
  }
  if (error) {
