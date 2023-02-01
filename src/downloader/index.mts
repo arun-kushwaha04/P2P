@@ -2,7 +2,12 @@ import fs from 'fs';
 import { v4 as uuidv4, v4 } from 'uuid';
 import path from 'path';
 
-import { FILE_MANAGER, UDP_SERVER, validateIp } from '../server.mjs';
+import {
+ ACTIVE_DOWNLOADS,
+ FILE_MANAGER,
+ UDP_SERVER,
+ validateIp,
+} from '../server.mjs';
 import { CHUNK_TRANSFERED, TEMP_FOLDER } from '../utils/constant.mjs';
 import { throws } from 'assert';
 
@@ -80,6 +85,12 @@ export class Downloader {
   this.CHUNK_ARRAY[chunkNumber] = true;
   this.CHUNK_LEFT--;
   this.CHUNK_RECEVIED++;
+
+  if (this.CHUNK_LEFT === 0) {
+   console.log('Recevied all file chunks');
+   delete ACTIVE_DOWNLOADS[this.DOWNLOADER_ID];
+   return;
+  }
 
   if (this.CHUNK_RECEVIED >= this.CHUNK_LEFT) {
    // TODO:
