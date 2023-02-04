@@ -177,6 +177,12 @@ export class Downloader {
   });
  }
 
+ private popQueue() {
+  const value = this.PEERS.shift();
+  this.PEERS.push(value!);
+  return value;
+ }
+
  private refeshPeerList() {
   // TODO:
  }
