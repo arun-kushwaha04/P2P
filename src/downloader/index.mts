@@ -15,6 +15,7 @@ import {
 } from '../utils/constant.mjs';
 import chalk from 'chalk';
 import { Worker, workerData } from 'worker_threads';
+import pausedDownloadModel from '../files/pausedDownloadModel.mjs';
 
 export class Downloader {
  private FOLDER_NAME: string;
@@ -28,8 +29,14 @@ export class Downloader {
  private CHUNK_ARRAY: boolean[];
 
  private DOWNLOADER_ID: string;
+ private simuntanousDownlaod: number = 5;
 
- constructor(fileHash: string, downloaderId: string) {
+ constructor(
+  fileHash: string,
+  downloaderId: string,
+  folderName: string = uuidv4(),
+  chunkArray?: number[],
+ ) {
   this.FILE_HASH = fileHash;
   const temp = FILE_MANAGER.getFileInfo(fileHash);
   this.PEERS = temp.peerList;
@@ -38,8 +45,8 @@ export class Downloader {
   this.IS_FOLDER = temp.isFolder;
   this.CHUNK_LEFT = Math.ceil(this.FILE_SIZE / CHUNK_TRANSFERED);
   this.DOWNLOADER_ID = downloaderId;
-  this.CHUNK_ARRAY = new Array(this.CHUNK_LEFT);
-  this.FOLDER_NAME = uuidv4();
+  this.CHUNK_ARRAY = chunkArray ? chunkArray : new Array(this.CHUNK_LEFT);
+  this.FOLDER_NAME = folderName;
   console.log(this.CHUNK_LEFT);
   for (let i = 0; i < this.CHUNK_LEFT; i++) {
    this.CHUNK_ARRAY[i] = false;
@@ -69,18 +76,29 @@ export class Downloader {
 
   let chunkNumber = 0;
 
-  this.PEERS.forEach((peer) => {
-   if (chunkNumber < this.CHUNK_LEFT && validateIp(peer)) {
+  for (let i = 0; i < this.simuntanousDownlaod; i++) {
+   if (this.CHUNK_ARRAY[chunkNumber]) {
+    i--;
+    chunkNumber++;
+    continue;
+   }
+   this.validOnlinePeer();
+   if (this.PEERS.length > 0) {
+    let peerIPAddress = this.popAndPush();
     UDP_SERVER.sendChunkRequest(
      this.FILE_HASH,
      chunkNumber,
-     peer,
+     peerIPAddress,
      this.FOLDER_NAME,
      this.DOWNLOADER_ID,
     );
     chunkNumber++;
+   } else {
+    console.log('Download paused, no peer online');
+    this.pauseDownloadAndSaveState();
+    break;
    }
-  });
+  }
  }
 
  public handleReceviedChunk(chunkNumber: number, peerIPAddr: string) {
@@ -98,23 +116,19 @@ export class Downloader {
    );
    return;
   }
-
-  if (this.CHUNK_RECEVIED >= this.CHUNK_LEFT) {
-   // TODO:
-   // compileChunk()
+  this.validOnlinePeer();
+  if (this.PEERS.length > 0) {
+   UDP_SERVER.sendChunkRequest(
+    this.FILE_HASH,
+    chunkNumber + 5,
+    this.popAndPush(),
+    this.FOLDER_NAME,
+    this.DOWNLOADER_ID,
+   );
+  } else {
+   console.log('Download paused, no peer online');
+   this.pauseDownloadAndSaveState();
   }
-  let randomChunkNumber = Math.floor(Math.random() * this.CHUNK_ARRAY.length);
-  while (this.CHUNK_ARRAY[randomChunkNumber]) {
-   console.log(randomChunkNumber, this.CHUNK_ARRAY[randomChunkNumber]);
-   randomChunkNumber = Math.floor(Math.random() * this.CHUNK_ARRAY.length);
-  }
-  UDP_SERVER.sendChunkRequest(
-   this.FILE_HASH,
-   randomChunkNumber,
-   peerIPAddr,
-   this.FOLDER_NAME,
-   this.DOWNLOADER_ID,
-  );
  }
 
  private async rebuildFile(folderPath: string, fileName: string) {
@@ -177,13 +191,46 @@ export class Downloader {
   });
  }
 
- private popQueue() {
+ private popAndPush(): string {
   const value = this.PEERS.shift();
   this.PEERS.push(value!);
-  return value;
+  return value!;
+ }
+
+ private pop(): string {
+  const value = this.PEERS.shift();
+  return value!;
+ }
+
+ private pushFront(peerIPAddr: string) {
+  this.PEERS.unshift(peerIPAddr);
  }
 
  private refeshPeerList() {
   // TODO:
+  const { peerList } = FILE_MANAGER.getFileInfo(this.FILE_HASH);
+
+  peerList.forEach((newPeer) => {
+   if (this.PEERS.indexOf(newPeer) == -1) {
+    this.pushFront(newPeer);
+   }
+  });
+  return;
+ }
+ private validOnlinePeer() {
+  while (this.PEERS.length > 0 && !validateIp(this.PEERS[0])) {
+   this.pop();
+  }
+  return;
+ }
+ private async pauseDownloadAndSaveState() {
+  const downloadState = new pausedDownloadModel({
+   fileHash: this.FILE_HASH,
+   folderName: this.FOLDER_NAME,
+   chunkArray: this.CHUNK_ARRAY,
+  });
+  await downloadState.save();
+  delete ACTIVE_DOWNLOADS[this.DOWNLOADER_ID];
+  return;
  }
 }
