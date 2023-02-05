@@ -117,10 +117,13 @@ export class Downloader {
    return;
   }
   this.validOnlinePeer();
-  if (this.PEERS.length > 0) {
+  if (
+   this.PEERS.length > 0 &&
+   chunkNumber + this.simuntanousDownlaod < this.CHUNK_ARRAY.length
+  ) {
    UDP_SERVER.sendChunkRequest(
     this.FILE_HASH,
-    chunkNumber + 5,
+    chunkNumber + this.simuntanousDownlaod,
     this.popAndPush(),
     this.FOLDER_NAME,
     this.DOWNLOADER_ID,
