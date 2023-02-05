@@ -11,7 +11,7 @@ const download = new mongoose.Schema({
  },
  chunkArray: [
   {
-   type: 'number',
+   type: 'Boolean',
   },
  ],
 });
