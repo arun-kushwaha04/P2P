@@ -366,7 +366,7 @@ export class UDPSever {
   peerIPAddr: string,
  ): void => {
   const objToSend: udpPacket = {
-   pktType: FILE_SEARCH_HASH,
+   pktType: FILE_SEARCH_HASH_RESPONSE,
    clientId: this.USER_ID,
    clientUserName: this.USER_NAME,
    currTime: new Date(),
