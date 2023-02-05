@@ -30,6 +30,7 @@ export class Downloader {
 
  private DOWNLOADER_ID: string;
  private simuntanousDownlaod: number = 5;
+ private TIMER: NodeJS.Timer | null = null;
 
  constructor(
   fileHash: string,
@@ -74,31 +75,8 @@ export class Downloader {
 
   ws.close();
 
-  let chunkNumber = 0;
-
-  for (let i = 0; i < this.simuntanousDownlaod; i++) {
-   if (this.CHUNK_ARRAY[chunkNumber]) {
-    i--;
-    chunkNumber++;
-    continue;
-   }
-   this.validOnlinePeer();
-   if (this.PEERS.length > 0) {
-    let peerIPAddress = this.popAndPush();
-    UDP_SERVER.sendChunkRequest(
-     this.FILE_HASH,
-     chunkNumber,
-     peerIPAddress,
-     this.FOLDER_NAME,
-     this.DOWNLOADER_ID,
-    );
-    chunkNumber++;
-   } else {
-    console.log('Download paused, no peer online');
-    this.pauseDownloadAndSaveState();
-    break;
-   }
-  }
+  this.refeshPeerList();
+  this.TIMER = setInterval(this.refeshPeerList, 15000);
  }
 
  public handleReceviedChunk(chunkNumber: number, peerIPAddr: string) {
@@ -117,17 +95,33 @@ export class Downloader {
    return;
   }
   this.validOnlinePeer();
-  if (
-   this.PEERS.length > 0 &&
-   chunkNumber + this.simuntanousDownlaod < this.CHUNK_ARRAY.length
-  ) {
-   UDP_SERVER.sendChunkRequest(
-    this.FILE_HASH,
-    chunkNumber + this.simuntanousDownlaod,
-    this.popAndPush(),
-    this.FOLDER_NAME,
-    this.DOWNLOADER_ID,
-   );
+  if (this.PEERS.length > 0) {
+   if (
+    chunkNumber + this.simuntanousDownlaod < this.CHUNK_ARRAY.length &&
+    !this.CHUNK_ARRAY[chunkNumber + this.simuntanousDownlaod]
+   ) {
+    UDP_SERVER.sendChunkRequest(
+     this.FILE_HASH,
+     chunkNumber + this.simuntanousDownlaod,
+     this.popAndPush(),
+     this.FOLDER_NAME,
+     this.DOWNLOADER_ID,
+    );
+   }
+
+   if (
+    chunkNumber - this.simuntanousDownlaod > 0 &&
+    !this.CHUNK_ARRAY[chunkNumber - this.simuntanousDownlaod]
+   ) {
+    UDP_SERVER.sendChunkRequest(
+     this.FILE_HASH,
+     chunkNumber - this.simuntanousDownlaod,
+     this.popAndPush(),
+     this.FOLDER_NAME,
+     this.DOWNLOADER_ID,
+    );
+   }
+   return;
   } else {
    console.log('Download paused, no peer online');
    this.pauseDownloadAndSaveState();
@@ -173,6 +167,7 @@ export class Downloader {
    fs.rmSync(folderPath, { recursive: true, force: true });
    return;
   });
+  this.destructor();
  }
 
  private writeToFile(chunkName: string, folderPath: string, fileName: string) {
@@ -218,6 +213,34 @@ export class Downloader {
     this.pushFront(newPeer);
    }
   });
+
+  let chunkNumber = 0;
+
+  for (let i = 0; i < this.simuntanousDownlaod; i++) {
+   if (i > this.CHUNK_ARRAY.length || chunkNumber >= this.CHUNK_ARRAY.length)
+    break;
+   if (this.CHUNK_ARRAY[chunkNumber]) {
+    i--;
+    chunkNumber++;
+    continue;
+   }
+   this.validOnlinePeer();
+   if (this.PEERS.length > 0) {
+    let peerIPAddress = this.popAndPush();
+    UDP_SERVER.sendChunkRequest(
+     this.FILE_HASH,
+     chunkNumber,
+     peerIPAddress,
+     this.FOLDER_NAME,
+     this.DOWNLOADER_ID,
+    );
+    chunkNumber++;
+   } else {
+    console.log('Download paused, no peer online');
+    this.pauseDownloadAndSaveState();
+    break;
+   }
+  }
   return;
  }
  private validOnlinePeer() {
@@ -233,7 +256,12 @@ export class Downloader {
    chunkArray: this.CHUNK_ARRAY,
   });
   await downloadState.save();
-  delete ACTIVE_DOWNLOADS[this.DOWNLOADER_ID];
+  this.destructor;
   return;
+ }
+ private destructor() {
+  console.log(chalk.bgMagenta('Removing download', this.DOWNLOADER_ID));
+  delete ACTIVE_DOWNLOADS[this.DOWNLOADER_ID];
+  if (this.TIMER != null) clearInterval(this.TIMER);
  }
 }
