@@ -10,9 +10,16 @@ import {
  FILE_CHUNK_REQUEST,
  FILE_CHUNK,
  CHUNK_TRANSFERED,
+ FILE_SEARCH_HASH,
+ FILE_SEARCH_HASH_RESPONSE,
 } from '../utils/constant.mjs';
 import chalk from 'chalk';
-import { FILE_MANAGER, TCP_SERVER, UDP_SERVER } from '../server.mjs';
+import {
+ ACTIVE_DOWNLOADS,
+ FILE_MANAGER,
+ TCP_SERVER,
+ UDP_SERVER,
+} from '../server.mjs';
 import { createReadStream } from 'fs';
 import { buffer } from 'stream/consumers';
 
@@ -154,6 +161,29 @@ export class UDPSever {
      packetObjRecevied.ipInfo.senderIpAddr,
      packetObjRecevied.payload?.data.folderName,
      packetObjRecevied.payload?.data.downloaderId,
+    );
+   } else if (packetObjRecevied.pktType === FILE_SEARCH_HASH) {
+    console.log(
+     chalk.blue('File search by hash request'),
+     chalk.green(packetObjRecevied.clientUserName),
+    );
+    if (
+     await FILE_MANAGER.searchByHash(packetObjRecevied.payload?.data.fileHash)
+    ) {
+     this.sendFileSearchResponse(
+      packetObjRecevied.payload?.data.dowloaderId,
+      packetObjRecevied.ipInfo.senderIpAddr,
+     );
+    }
+    return;
+   } else if (packetObjRecevied.pktType === FILE_SEARCH_HASH_RESPONSE) {
+    console.log(
+     chalk.blue('File search by hash response'),
+     chalk.green(packetObjRecevied.clientUserName),
+     chalk.magenta(packetObjRecevied.payload?.data),
+    );
+    ACTIVE_DOWNLOADS[packetObjRecevied.payload?.data].updatePeerList(
+     packetObjRecevied.ipInfo.senderIpAddr,
     );
    } else {
     throw new Error('Invalid packet recevied');
@@ -306,6 +336,53 @@ export class UDPSever {
   };
   this.sendUdpPacket(objToSend);
  }
+
+ public sendFileSearchHash = (
+  fileHash: string,
+  downloaderId: string,
+  peerIPAddr: string,
+ ): void => {
+  const objToSend: udpPacket = {
+   pktType: FILE_SEARCH_HASH,
+   clientId: this.USER_ID,
+   clientUserName: this.USER_NAME,
+   currTime: new Date(),
+   payload: {
+    data: { fileHash, downloaderId },
+    message: 'Please search for this file',
+   },
+   ipInfo: {
+    senderPort: UDP_SERVER_PORT,
+    senderIpAddr: this.MY_IP_ADDRESS,
+    clientPort: UDP_SERVER_PORT,
+    clientIpAddr: peerIPAddr,
+   },
+  };
+  this.sendUdpPacket(objToSend);
+ };
+
+ public sendFileSearchResponse = (
+  downloaderId: string,
+  peerIPAddr: string,
+ ): void => {
+  const objToSend: udpPacket = {
+   pktType: FILE_SEARCH_HASH,
+   clientId: this.USER_ID,
+   clientUserName: this.USER_NAME,
+   currTime: new Date(),
+   payload: {
+    data: downloaderId,
+    message: 'Please search for this file',
+   },
+   ipInfo: {
+    senderPort: UDP_SERVER_PORT,
+    senderIpAddr: this.MY_IP_ADDRESS,
+    clientPort: UDP_SERVER_PORT,
+    clientIpAddr: peerIPAddr,
+   },
+  };
+  this.sendUdpPacket(objToSend);
+ };
 
  private async sendChunkOnTCP(
   fileHash: string,

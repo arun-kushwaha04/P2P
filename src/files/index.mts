@@ -6,10 +6,9 @@ import chalk from 'chalk';
 import { connectToDB } from './db.mjs';
 import FileModel from './fileModel.mjs';
 import { Worker } from 'worker_threads';
-import { Hash, createHash } from 'crypto';
-import { TCP_SERVER } from '../server.mjs';
+import { createHash } from 'crypto';
+import { BROADCAST_ADDR, TCP_SERVER, UDP_SERVER } from '../server.mjs';
 import { FILE_SEARCH_RESULT } from '../utils/constant.mjs';
-import { CallbackError } from 'mongoose';
 
 // declare module namespace {
 //  interface typeInterface {
@@ -278,6 +277,25 @@ export class File {
    size: this.FILE_SEARCH_RESULT[fileHash].size,
    isFolder: this.FILE_SEARCH_RESULT[fileHash].isFolder,
   };
+ }
+
+ public refreshPeerList(fileHash: string, downloaderId: string) {
+  UDP_SERVER.sendFileSearchHash(fileHash, downloaderId, BROADCAST_ADDR);
+  return;
+ }
+
+ public searchByHash(filehash: string): Promise<boolean> {
+  return new Promise<boolean>((resolve, reject) => {
+   FileModel.find({ fileHash: filehash })
+    .then((file) => {
+     if (file.length > 0) resolve(true);
+     resolve(false);
+    })
+    .catch((err) => {
+     console.log(chalk.red(err));
+     resolve(false);
+    });
+  });
  }
 
  public getFilePathAndSize(fileHash: string) {

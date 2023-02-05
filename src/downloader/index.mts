@@ -121,6 +121,18 @@ export class Downloader {
      this.DOWNLOADER_ID,
     );
    }
+
+   for (let i = 0; i < this.CHUNK_ARRAY.length; i++) {
+    if (!this.CHUNK_ARRAY[i]) {
+     UDP_SERVER.sendChunkRequest(
+      this.FILE_HASH,
+      i,
+      this.popAndPush(),
+      this.FOLDER_NAME,
+      this.DOWNLOADER_ID,
+     );
+    }
+   }
    return;
   } else {
    console.log('Download paused, no peer online');
@@ -206,41 +218,37 @@ export class Downloader {
 
  private refeshPeerList() {
   // TODO:
-  const { peerList } = FILE_MANAGER.getFileInfo(this.FILE_HASH);
+  FILE_MANAGER.refreshPeerList(this.FILE_HASH, this.DOWNLOADER_ID);
+  setTimeout(() => {
+   let chunkNumber = 0;
 
-  peerList.forEach((newPeer) => {
-   if (this.PEERS.indexOf(newPeer) == -1) {
-    this.pushFront(newPeer);
+   for (let i = 0; i < this.simuntanousDownlaod; i++) {
+    if (i > this.CHUNK_ARRAY.length || chunkNumber >= this.CHUNK_ARRAY.length)
+     break;
+    if (this.CHUNK_ARRAY[chunkNumber]) {
+     i--;
+     chunkNumber++;
+     continue;
+    }
+    this.validOnlinePeer();
+    if (this.PEERS.length > 0) {
+     let peerIPAddress = this.popAndPush();
+     UDP_SERVER.sendChunkRequest(
+      this.FILE_HASH,
+      chunkNumber,
+      peerIPAddress,
+      this.FOLDER_NAME,
+      this.DOWNLOADER_ID,
+     );
+     chunkNumber++;
+    } else {
+     console.log('Download paused, no peer online');
+     this.pauseDownloadAndSaveState();
+     break;
+    }
    }
-  });
+  }, 5000);
 
-  let chunkNumber = 0;
-
-  for (let i = 0; i < this.simuntanousDownlaod; i++) {
-   if (i > this.CHUNK_ARRAY.length || chunkNumber >= this.CHUNK_ARRAY.length)
-    break;
-   if (this.CHUNK_ARRAY[chunkNumber]) {
-    i--;
-    chunkNumber++;
-    continue;
-   }
-   this.validOnlinePeer();
-   if (this.PEERS.length > 0) {
-    let peerIPAddress = this.popAndPush();
-    UDP_SERVER.sendChunkRequest(
-     this.FILE_HASH,
-     chunkNumber,
-     peerIPAddress,
-     this.FOLDER_NAME,
-     this.DOWNLOADER_ID,
-    );
-    chunkNumber++;
-   } else {
-    console.log('Download paused, no peer online');
-    this.pauseDownloadAndSaveState();
-    break;
-   }
-  }
   return;
  }
  private validOnlinePeer() {
@@ -259,8 +267,12 @@ export class Downloader {
   this.destructor;
   return;
  }
+ public updatePeerList(peerIPAddr: string) {
+  this.pushFront(peerIPAddr);
+  return;
+ }
  private destructor() {
-  console.log(chalk.bgMagenta('Removing download', this.DOWNLOADER_ID));
+  console.log(chalk.bgMagenta('Removing downloader', this.DOWNLOADER_ID));
   delete ACTIVE_DOWNLOADS[this.DOWNLOADER_ID];
   if (this.TIMER != null) clearInterval(this.TIMER);
  }
