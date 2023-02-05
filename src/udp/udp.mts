@@ -171,7 +171,7 @@ export class UDPSever {
      await FILE_MANAGER.searchByHash(packetObjRecevied.payload?.data.fileHash)
     ) {
      this.sendFileSearchResponse(
-      packetObjRecevied.payload?.data.dowloaderId,
+      packetObjRecevied.payload?.data.downloaderId,
       packetObjRecevied.ipInfo.senderIpAddr,
      );
     }
