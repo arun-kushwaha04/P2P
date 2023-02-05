@@ -93,8 +93,7 @@ export class UDPSever {
    }
 
    if (packetObjRecevied.clientId === this.USER_ID) {
-    if (packetObjRecevied.pktType === UDP_PING)
-     this.MY_IP_ADDRESS = rinfo.address;
+    this.MY_IP_ADDRESS = rinfo.address;
     return;
    }
 
