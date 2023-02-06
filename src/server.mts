@@ -121,7 +121,7 @@ const startDownload = async () => {
   {
    name: 'fileHash',
    type: 'input',
-   message: 'File/folder path, you want to share\n',
+   message: 'File/folder hash, you want to download\n',
   },
  ]);
  const dowloaderId = uuidv4();

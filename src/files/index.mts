@@ -50,6 +50,7 @@ export class File {
  public searchRunning = () => this.SEARCH_RUNNING;
 
  public startSearch = (fileQuery: string) => {
+  this.FILE_SEARCH_RESULT = {};
   this.CURRENT_FILE_QUERY = fileQuery;
   this.SEARCH_RUNNING = true;
  };

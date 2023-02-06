@@ -253,9 +253,7 @@ export class Downloader {
   FILE_MANAGER.refreshPeerList(this.FILE_HASH, this.DOWNLOADER_ID);
   setTimeout(() => {
    let chunkNumber = 0;
-   console.log(downloaderId);
    for (let i = 0; i < ACTIVE_DOWNLOADS[downloaderId].simuntanousDownlaod; ) {
-    console.log(i, chunkNumber);
     if (
      i > ACTIVE_DOWNLOADS[downloaderId].CHUNK_ARRAY.length ||
      chunkNumber >= ACTIVE_DOWNLOADS[downloaderId].CHUNK_ARRAY.length
