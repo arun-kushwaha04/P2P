@@ -33,11 +33,22 @@ declare module namespace {
   extentsion: { [filetype: string]: FileName };
   size: string;
   isFolder: boolean;
+  subFiles?: any[];
  }
 
  export interface FileInfoInterface {
   [filehash: string]: Filehash;
  }
+}
+
+interface FileInterface {
+ fileName: string;
+ fileHash: string;
+ fileMimeType: string;
+ fileSize: string;
+ fileExtentsion: string;
+ isFolder: boolean;
+ subFiles: any[];
 }
 export class File {
  private FILE_SEARCH_RESULT: namespace.FileInfoInterface = {};
@@ -58,7 +69,7 @@ export class File {
  public stopSearch = () => {
   this.CURRENT_FILE_QUERY = null;
   this.SEARCH_RUNNING = false;
-  console.log(this.FILE_SEARCH_RESULT);
+  console.log(JSON.stringify(this.FILE_SEARCH_RESULT));
  };
 
  public async shareFile(filePath: string) {
@@ -188,68 +199,106 @@ export class File {
  }
 
  public async searchFile(searchQuery: string, clientIpAddr: string) {
-  const file = await FileModel.find(
-   {
-    fileName: { $regex: searchQuery, $options: 'i' },
-   },
-   '-filePath',
-  );
-  if (file.length > 0) {
+  const files = await FileModel.find({
+   fileName: { $regex: searchQuery, $options: 'i' },
+  });
+  if (files.length > 0) {
    const searchResult: any = { searchQuery };
-   searchResult.file = file;
+   let temp: any[] = [];
+   for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    //creating a temp file object
+    let ztemp: FileInterface = {
+     fileHash: file.fileHash!,
+     fileExtentsion: file.fileExtentsion!,
+     fileName: file.fileName!,
+     fileSize: file.fileSize!,
+     fileMimeType: file.fileMimeType!,
+     isFolder: file.isFolder!,
+     subFiles: [],
+    };
+    if (file.isFolder) {
+     const parentPathLength = file.filePath!.split('/').length;
+     console.log(parentPathLength);
+     const subFiles = await FileModel.find({
+      filePath: { $regex: file.filePath, $options: 'i' },
+     });
+
+     subFiles.forEach((subFile) => {
+      if (subFile.filePath !== file.filePath && !subFile.isFolder)
+       ztemp.subFiles.push({
+        fileHash: subFile.fileHash,
+        fileExtentsion: subFile.fileExtentsion,
+        fileName: subFile.fileName,
+        fileSize: subFile.fileSize,
+        fileMimeType: subFile.fileMimeType,
+        isFolder: subFile.isFolder,
+        parentFolder: this.returnParentFolder(
+         subFile.filePath!,
+         parentPathLength,
+        ),
+       });
+     });
+    }
+    console.log(ztemp);
+    temp.push(ztemp);
+   }
+   searchResult.file = temp;
    TCP_SERVER.sendMessage(searchResult, clientIpAddr, FILE_SEARCH_RESULT);
   }
   return;
  }
 
+ //TODO: handle for window/linux
+ private returnParentFolder(filePath: string, parentLength: number) {
+  const array: string[] = filePath.split('/');
+  let result = [''];
+  for (let i = 0; i < array.length - 1; i++) {
+   if (i < parentLength) continue;
+   result.push(array[i]);
+  }
+  return result;
+ }
+
  public async handleFileSearchResult(searchResult: any, peerIPAddr: string) {
   if (searchResult.searchQuery === this.CURRENT_FILE_QUERY) {
    //insert this in file query result
-   searchResult.file.forEach(
-    (file: {
-     fileName: string;
-     fileHash: string;
-     fileMimeType: string;
-     fileSize: string;
-     fileExtentsion: string;
-     isFolder: boolean;
-    }) => {
-     if (this.FILE_SEARCH_RESULT[file.fileHash]) {
+   searchResult.file.forEach((file: FileInterface) => {
+    if (this.FILE_SEARCH_RESULT[file.fileHash]) {
+     if (
+      this.FILE_SEARCH_RESULT[file.fileHash].extentsion[file.fileExtentsion]
+     ) {
       if (
-       this.FILE_SEARCH_RESULT[file.fileHash].extentsion[file.fileExtentsion]
+       this.FILE_SEARCH_RESULT[file.fileHash].extentsion[file.fileExtentsion][
+        file.fileName
+       ]
       ) {
-       if (
-        this.FILE_SEARCH_RESULT[file.fileHash].extentsion[file.fileExtentsion][
-         file.fileName
-        ]
-       ) {
-        this.FILE_SEARCH_RESULT[file.fileHash].extentsion[file.fileExtentsion][
-         file.fileName
-        ].push(peerIPAddr);
-       } else {
-        this.FILE_SEARCH_RESULT[file.fileHash].extentsion[file.fileExtentsion][
-         file.fileName
-        ] = [peerIPAddr];
-       }
+       this.FILE_SEARCH_RESULT[file.fileHash].extentsion[file.fileExtentsion][
+        file.fileName
+       ].push(peerIPAddr);
       } else {
-       this.FILE_SEARCH_RESULT[file.fileHash].extentsion[file.fileExtentsion] =
-        {
-         [file.fileName]: [peerIPAddr],
-        };
+       this.FILE_SEARCH_RESULT[file.fileHash].extentsion[file.fileExtentsion][
+        file.fileName
+       ] = [peerIPAddr];
       }
      } else {
-      this.FILE_SEARCH_RESULT[file.fileHash] = {
-       extentsion: {
-        [file.fileExtentsion]: {
-         [file.fileName]: [peerIPAddr],
-        },
-       },
-       size: file.fileSize,
-       isFolder: file.isFolder,
+      this.FILE_SEARCH_RESULT[file.fileHash].extentsion[file.fileExtentsion] = {
+       [file.fileName]: [peerIPAddr],
       };
      }
-    },
-   );
+    } else {
+     this.FILE_SEARCH_RESULT[file.fileHash] = {
+      extentsion: {
+       [file.fileExtentsion]: {
+        [file.fileName]: [peerIPAddr],
+       },
+      },
+      size: file.fileSize,
+      isFolder: file.isFolder,
+      subFiles: file?.subFiles,
+     };
+    }
+   });
   }
  }
  public getFileInfo(fileHash: string) {
