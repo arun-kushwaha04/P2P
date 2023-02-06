@@ -93,7 +93,13 @@ export async function closeListenerServer(
  //TODO: handle type of message here
  if (getTcpMessage) {
   //handling the message
-  const message = JSON.parse(getTcpMessage()!);
+  let message;
+  try {
+   message = JSON.parse(getTcpMessage()!);
+  } catch (error) {
+   console.log(error);
+   return;
+  }
   // console.log(message);
   const messageObj = message;
   if (messageObj.type === CHAT_MESSAGE) {

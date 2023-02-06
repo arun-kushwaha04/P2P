@@ -80,8 +80,10 @@ export class Downloader {
 
   ws.close();
 
-  this.refeshPeerList();
-  this.TIMER = setInterval(this.refeshPeerList, 15000);
+  this.refeshPeerList(this.DOWNLOADER_ID);
+  this.TIMER = setInterval(() => {
+   this.refeshPeerList(this.DOWNLOADER_ID);
+  }, 15000);
  }
 
  public handleReceviedChunk(chunkNumber: number, peerIPAddr: string) {
@@ -237,20 +239,33 @@ export class Downloader {
   this.PEERS.unshift(peerIPAddr);
  }
 
- private refeshPeerList() {
+ private refeshPeerList(downloaderId: string) {
+  if (this.CHUNK_LEFT === 0) {
+   console.log('Recevied all file chunks');
+   delete ACTIVE_DOWNLOADS[this.DOWNLOADER_ID];
+   this.rebuildFile(
+    path.join(TEMP_FOLDER, this.FOLDER_NAME),
+    this.FILE_NAMES[0],
+   );
+   return;
+  }
   // TODO:
   FILE_MANAGER.refreshPeerList(this.FILE_HASH, this.DOWNLOADER_ID);
   setTimeout(() => {
    let chunkNumber = 0;
-
-   for (let i = 0; i < this.simuntanousDownlaod; i++) {
-    if (i > this.CHUNK_ARRAY.length || chunkNumber >= this.CHUNK_ARRAY.length)
+   console.log(downloaderId);
+   for (let i = 0; i < ACTIVE_DOWNLOADS[downloaderId].simuntanousDownlaod; ) {
+    console.log(i, chunkNumber);
+    if (
+     i > ACTIVE_DOWNLOADS[downloaderId].CHUNK_ARRAY.length ||
+     chunkNumber >= ACTIVE_DOWNLOADS[downloaderId].CHUNK_ARRAY.length
+    )
      break;
     if (
-     this.CHUNK_ARRAY[chunkNumber] ||
-     new Date().getTime() <= this.CHUNK_REQUESTED_ARRAY[chunkNumber] + 10000
+     ACTIVE_DOWNLOADS[downloaderId].CHUNK_ARRAY[chunkNumber] ||
+     new Date().getTime() <=
+      ACTIVE_DOWNLOADS[downloaderId].CHUNK_REQUESTED_ARRAY[chunkNumber] + 10000
     ) {
-     i--;
      chunkNumber++;
      continue;
     }
@@ -266,6 +281,7 @@ export class Downloader {
      );
      this.CHUNK_REQUESTED_ARRAY[chunkNumber] = new Date().getTime();
      chunkNumber++;
+     i++;
     } else {
      console.log('Download paused, no peer online');
      this.pauseDownloadAndSaveState();
