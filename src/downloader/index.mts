@@ -24,9 +24,10 @@ export class Downloader {
  private FILE_NAMES: string[];
  private FILE_SIZE: number;
  private IS_FOLDER: boolean;
- private CHUNK_RECEVIED: number = 0;
- private CHUNK_LEFT: number;
+ private TOTAL_CHUNKS: number;
+ private CHUNK_LEFT: number = 0;
  private CHUNK_ARRAY: boolean[];
+ private CHUNK_REQUESTED_ARRAY: number[];
 
  private DOWNLOADER_ID: string;
  private simuntanousDownlaod: number = 5;
@@ -44,13 +45,17 @@ export class Downloader {
   this.FILE_NAMES = temp.names;
   this.FILE_SIZE = parseInt(temp.size);
   this.IS_FOLDER = temp.isFolder;
-  this.CHUNK_LEFT = Math.ceil(this.FILE_SIZE / CHUNK_TRANSFERED);
+  this.TOTAL_CHUNKS = Math.ceil(this.FILE_SIZE / CHUNK_TRANSFERED);
   this.DOWNLOADER_ID = downloaderId;
-  this.CHUNK_ARRAY = chunkArray ? chunkArray : new Array(this.CHUNK_LEFT);
+  this.CHUNK_ARRAY = chunkArray ? chunkArray : new Array(this.TOTAL_CHUNKS);
+  this.CHUNK_REQUESTED_ARRAY = new Array(this.TOTAL_CHUNKS);
   this.FOLDER_NAME = folderName;
-  console.log(this.CHUNK_LEFT);
-  for (let i = 0; i < this.CHUNK_LEFT; i++) {
-   this.CHUNK_ARRAY[i] = false;
+  for (let i = 0; i < this.TOTAL_CHUNKS; i++) {
+   if (!chunkArray) {
+    this.CHUNK_ARRAY[i] = false;
+   }
+   if (!this.CHUNK_ARRAY[i]) this.CHUNK_LEFT++;
+   this.CHUNK_REQUESTED_ARRAY[i] = 0;
   }
   this.startDownload();
  }
@@ -83,7 +88,6 @@ export class Downloader {
   if (this.CHUNK_ARRAY[chunkNumber] == true) return;
   this.CHUNK_ARRAY[chunkNumber] = true;
   this.CHUNK_LEFT--;
-  this.CHUNK_RECEVIED++;
 
   if (this.CHUNK_LEFT === 0) {
    console.log('Recevied all file chunks');
@@ -98,7 +102,10 @@ export class Downloader {
   if (this.PEERS.length > 0) {
    if (
     chunkNumber + this.simuntanousDownlaod < this.CHUNK_ARRAY.length &&
-    !this.CHUNK_ARRAY[chunkNumber + this.simuntanousDownlaod]
+    !this.CHUNK_ARRAY[chunkNumber + this.simuntanousDownlaod] &&
+    this.CHUNK_REQUESTED_ARRAY[chunkNumber + this.simuntanousDownlaod] +
+     10000 <=
+     new Date().getTime()
    ) {
     UDP_SERVER.sendChunkRequest(
      this.FILE_HASH,
@@ -107,11 +114,17 @@ export class Downloader {
      this.FOLDER_NAME,
      this.DOWNLOADER_ID,
     );
+    this.CHUNK_REQUESTED_ARRAY[chunkNumber + this.simuntanousDownlaod] =
+     new Date().getTime();
+    return;
    }
 
    if (
     chunkNumber - this.simuntanousDownlaod > 0 &&
-    !this.CHUNK_ARRAY[chunkNumber - this.simuntanousDownlaod]
+    !this.CHUNK_ARRAY[chunkNumber - this.simuntanousDownlaod] &&
+    this.CHUNK_REQUESTED_ARRAY[chunkNumber - this.simuntanousDownlaod] +
+     10000 <=
+     new Date().getTime()
    ) {
     UDP_SERVER.sendChunkRequest(
      this.FILE_HASH,
@@ -120,10 +133,16 @@ export class Downloader {
      this.FOLDER_NAME,
      this.DOWNLOADER_ID,
     );
+    this.CHUNK_REQUESTED_ARRAY[chunkNumber - this.simuntanousDownlaod] =
+     new Date().getTime();
+    return;
    }
 
    for (let i = 0; i < this.CHUNK_ARRAY.length; i++) {
-    if (!this.CHUNK_ARRAY[i]) {
+    if (
+     !this.CHUNK_ARRAY[i] &&
+     this.CHUNK_REQUESTED_ARRAY[i] + 10000 <= new Date().getTime()
+    ) {
      UDP_SERVER.sendChunkRequest(
       this.FILE_HASH,
       i,
@@ -131,6 +150,8 @@ export class Downloader {
       this.FOLDER_NAME,
       this.DOWNLOADER_ID,
      );
+     this.CHUNK_REQUESTED_ARRAY[i] = new Date().getTime();
+     return;
     }
    }
    return;
@@ -225,7 +246,10 @@ export class Downloader {
    for (let i = 0; i < this.simuntanousDownlaod; i++) {
     if (i > this.CHUNK_ARRAY.length || chunkNumber >= this.CHUNK_ARRAY.length)
      break;
-    if (this.CHUNK_ARRAY[chunkNumber]) {
+    if (
+     this.CHUNK_ARRAY[chunkNumber] ||
+     new Date().getTime() <= this.CHUNK_REQUESTED_ARRAY[chunkNumber] + 10000
+    ) {
      i--;
      chunkNumber++;
      continue;
@@ -240,6 +264,7 @@ export class Downloader {
       this.FOLDER_NAME,
       this.DOWNLOADER_ID,
      );
+     this.CHUNK_REQUESTED_ARRAY[chunkNumber] = new Date().getTime();
      chunkNumber++;
     } else {
      console.log('Download paused, no peer online');

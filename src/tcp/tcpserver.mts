@@ -111,6 +111,7 @@ export async function closeListenerServer(
     FILE_MANAGER.handleFileSearchResult(messageObj.message, getClientIPAddr());
    }
   } else if (messageObj.type === FILE_CHUNK) {
+   if (!ACTIVE_DOWNLOADS[messageObj.message.downloaderId]) return;
    const worker = new Worker('./dist/workers/writeFileChunck.mjs', {
     workerData: {
      chunckNumber: messageObj.message.chunckNumber,
@@ -126,7 +127,7 @@ export async function closeListenerServer(
     return;
    });
    worker.on('exit', () => {
-    ACTIVE_DOWNLOADS[messageObj.message.downloaderId].handleReceviedChunk(
+    ACTIVE_DOWNLOADS[messageObj.message.downloaderId]?.handleReceviedChunk(
      messageObj.message.chunckNumber,
      getClientIPAddr(),
     );
