@@ -12,6 +12,7 @@ import {
  CHUNK_TRANSFERED,
  DOWNLOAD_FOLDER,
  TEMP_FOLDER,
+ delay,
 } from '../utils/constant.mjs';
 import chalk from 'chalk';
 import { Worker, workerData } from 'worker_threads';
@@ -38,7 +39,8 @@ export class Downloader {
  private CHUNK_ARRAY: boolean[];
  private CHUNK_REQUESTED_ARRAY: number[];
  private SUB_FILES: SubFileInterface[];
-
+ private IS_SUB_FILE: boolean;
+ private PARENT_FOLDER: string[] = [];
  private DOWNLOADER_ID: string;
  private simuntanousDownlaod: number = 5;
  private TIMER: NodeJS.Timer | null = null;
@@ -46,10 +48,10 @@ export class Downloader {
  constructor(
   fileHash: string,
   downloaderId: string,
-  folderName: string = uuidv4(),
   peerList?: string[],
   fileInfo?: SubFileInterface,
   isSubFile?: boolean,
+  folderName: string = uuidv4(),
   chunkArray?: number[],
  ) {
   this.FILE_HASH = fileHash;
@@ -60,6 +62,8 @@ export class Downloader {
    this.FILE_SIZE = parseInt(fileInfo?.fileSize!);
    this.IS_FOLDER = fileInfo?.isFolder!;
    this.SUB_FILES = [];
+   this.IS_SUB_FILE = true;
+   this.PARENT_FOLDER = fileInfo?.parentFolder!;
   } else {
    const temp = FILE_MANAGER.getFileInfo(fileHash);
    this.PEERS = temp.peerList;
@@ -67,6 +71,7 @@ export class Downloader {
    this.FILE_SIZE = parseInt(temp.size);
    this.IS_FOLDER = temp.isFolder;
    this.SUB_FILES = temp.subFiles ? temp.subFiles : [];
+   this.IS_SUB_FILE = false;
   }
   this.FOLDER_NAME = folderName;
   this.TOTAL_CHUNKS = Math.ceil(this.FILE_SIZE / CHUNK_TRANSFERED);
@@ -82,32 +87,37 @@ export class Downloader {
   }
 
   if (this.IS_FOLDER) {
-   let currentDownload: string = uuidv4();
-   let i = 0;
-   while (true) {
-    if (i >= this.SUB_FILES.length) break;
-    if (ACTIVE_DOWNLOADS[currentDownload]) continue;
-    else {
-     const file = this.SUB_FILES[i];
-     const folderName = path.join(...[this.FOLDER_NAME, ...file.parentFolder]);
-     console.log(folderName);
-     const downloader = new Downloader(
-      this.SUB_FILES[i].fileHash,
-      currentDownload,
-      folderName,
-      this.PEERS,
-      file,
-      true,
-     );
-     ACTIVE_DOWNLOADS[currentDownload] = downloader;
-     currentDownload = uuidv4();
-     i++;
-    }
-   }
+   this.folderDownload();
   } else {
    this.startDownload();
   }
  }
+
+ private folderDownload = async () => {
+  const folderPath = path.join(TEMP_FOLDER, this.FOLDER_NAME);
+  fs.mkdirSync(folderPath, { recursive: true });
+  let currentDownload: string = uuidv4();
+  let i = 0;
+  while (true) {
+   if (i >= this.SUB_FILES.length) break;
+   if (ACTIVE_DOWNLOADS[currentDownload]) continue;
+   else {
+    const file = this.SUB_FILES[i];
+
+    const downloader = new Downloader(
+     this.SUB_FILES[i].fileHash,
+     currentDownload,
+     this.PEERS,
+     file,
+     true,
+    );
+    ACTIVE_DOWNLOADS[currentDownload] = downloader;
+    currentDownload = uuidv4();
+    i++;
+    await delay(5000);
+   }
+  }
+ };
 
  private startDownload() {
   //select a peer from list of availble peer
@@ -213,8 +223,15 @@ export class Downloader {
  }
 
  private async rebuildFile(folderPath: string, fileName: string) {
-  fs.mkdirSync(DOWNLOAD_FOLDER, { recursive: true });
-  fs.closeSync(fs.openSync(path.join(DOWNLOAD_FOLDER, fileName), 'w'));
+  let CURRENT_FOLDER = DOWNLOAD_FOLDER;
+  if (this.IS_SUB_FILE) {
+   const newFolderPath = path.join(...[DOWNLOAD_FOLDER, ...this.PARENT_FOLDER]);
+   fs.mkdirSync(newFolderPath, { recursive: true });
+   CURRENT_FOLDER = DOWNLOAD_FOLDER;
+  } else {
+   fs.mkdirSync(DOWNLOAD_FOLDER, { recursive: true });
+  }
+  fs.closeSync(fs.openSync(path.join(CURRENT_FOLDER, fileName), 'w'));
   for (let i = 0; i < this.CHUNK_ARRAY.length; i++) {
    try {
     await this.writeToFile(`chunk${i}`, folderPath, fileName);

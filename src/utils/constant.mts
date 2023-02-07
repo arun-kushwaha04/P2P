@@ -30,3 +30,6 @@ export const TCP_MESSAGE_NEXT: number = 4;
 export const TCP_MESSAGE_LAST: number = 5;
 export const TCP_MESSAGE_RESET: number = 6;
 export const CHECKSUM_ERROR: number = 7;
+
+export const delay = (ms: number) =>
+ new Promise((resolve) => setTimeout(resolve, ms));
