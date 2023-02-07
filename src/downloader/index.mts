@@ -17,6 +17,15 @@ import chalk from 'chalk';
 import { Worker, workerData } from 'worker_threads';
 import pausedDownloadModel from '../files/pausedDownloadModel.mjs';
 
+export interface SubFileInterface {
+ fileHash: string;
+ fileExtentsion: string;
+ fileName: string;
+ fileSize: string;
+ fileMimeType: string;
+ isFolder: boolean;
+ parentFolder: any[];
+}
 export class Downloader {
  private FOLDER_NAME: string;
  private FILE_HASH: string;
@@ -24,10 +33,11 @@ export class Downloader {
  private FILE_NAMES: string[];
  private FILE_SIZE: number;
  private IS_FOLDER: boolean;
- private TOTAL_CHUNKS: number;
+ private TOTAL_CHUNKS: number = 0;
  private CHUNK_LEFT: number = 0;
  private CHUNK_ARRAY: boolean[];
  private CHUNK_REQUESTED_ARRAY: number[];
+ private SUB_FILES: SubFileInterface[];
 
  private DOWNLOADER_ID: string;
  private simuntanousDownlaod: number = 5;
@@ -37,19 +47,32 @@ export class Downloader {
   fileHash: string,
   downloaderId: string,
   folderName: string = uuidv4(),
+  peerList?: string[],
+  fileInfo?: SubFileInterface,
+  isSubFile?: boolean,
   chunkArray?: number[],
  ) {
   this.FILE_HASH = fileHash;
-  const temp = FILE_MANAGER.getFileInfo(fileHash);
-  this.PEERS = temp.peerList;
-  this.FILE_NAMES = temp.names;
-  this.FILE_SIZE = parseInt(temp.size);
-  this.IS_FOLDER = temp.isFolder;
+  //TODO:implement folder download
+  if (isSubFile) {
+   this.PEERS = peerList!;
+   this.FILE_NAMES = [fileInfo?.fileName!];
+   this.FILE_SIZE = parseInt(fileInfo?.fileSize!);
+   this.IS_FOLDER = fileInfo?.isFolder!;
+   this.SUB_FILES = [];
+  } else {
+   const temp = FILE_MANAGER.getFileInfo(fileHash);
+   this.PEERS = temp.peerList;
+   this.FILE_NAMES = temp.names;
+   this.FILE_SIZE = parseInt(temp.size);
+   this.IS_FOLDER = temp.isFolder;
+   this.SUB_FILES = temp.subFiles ? temp.subFiles : [];
+  }
+  this.FOLDER_NAME = folderName;
   this.TOTAL_CHUNKS = Math.ceil(this.FILE_SIZE / CHUNK_TRANSFERED);
   this.DOWNLOADER_ID = downloaderId;
   this.CHUNK_ARRAY = chunkArray ? chunkArray : new Array(this.TOTAL_CHUNKS);
   this.CHUNK_REQUESTED_ARRAY = new Array(this.TOTAL_CHUNKS);
-  this.FOLDER_NAME = folderName;
   for (let i = 0; i < this.TOTAL_CHUNKS; i++) {
    if (!chunkArray) {
     this.CHUNK_ARRAY[i] = false;
@@ -57,7 +80,33 @@ export class Downloader {
    if (!this.CHUNK_ARRAY[i]) this.CHUNK_LEFT++;
    this.CHUNK_REQUESTED_ARRAY[i] = 0;
   }
-  this.startDownload();
+
+  if (this.IS_FOLDER) {
+   let currentDownload: string = uuidv4();
+   let i = 0;
+   while (true) {
+    if (i >= this.SUB_FILES.length) break;
+    if (ACTIVE_DOWNLOADS[currentDownload]) continue;
+    else {
+     const file = this.SUB_FILES[i];
+     const folderName = path.join(...[this.FOLDER_NAME, ...file.parentFolder]);
+     console.log(folderName);
+     const downloader = new Downloader(
+      this.SUB_FILES[i].fileHash,
+      currentDownload,
+      folderName,
+      this.PEERS,
+      file,
+      true,
+     );
+     ACTIVE_DOWNLOADS[currentDownload] = downloader;
+     currentDownload = uuidv4();
+     i++;
+    }
+   }
+  } else {
+   this.startDownload();
+  }
  }
 
  private startDownload() {

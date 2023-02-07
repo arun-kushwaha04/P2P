@@ -69,7 +69,7 @@ export class File {
  public stopSearch = () => {
   this.CURRENT_FILE_QUERY = null;
   this.SEARCH_RUNNING = false;
-  console.log(JSON.stringify(this.FILE_SEARCH_RESULT));
+  console.log(this.FILE_SEARCH_RESULT);
  };
 
  public async shareFile(filePath: string) {
@@ -326,6 +326,9 @@ export class File {
    names,
    size: this.FILE_SEARCH_RESULT[fileHash].size,
    isFolder: this.FILE_SEARCH_RESULT[fileHash].isFolder,
+   subFiles: this.FILE_SEARCH_RESULT[fileHash].subFiles
+    ? this.FILE_SEARCH_RESULT[fileHash].subFiles
+    : [],
   };
  }
 
