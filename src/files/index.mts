@@ -254,7 +254,7 @@ export class File {
   const array: string[] = filePath.split('/');
   let result = [''];
   for (let i = 0; i < array.length - 1; i++) {
-   if (i < parentLength) continue;
+   if (i < parentLength - 1) continue;
    result.push(array[i]);
   }
   return result;
