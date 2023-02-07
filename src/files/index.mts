@@ -219,7 +219,6 @@ export class File {
     };
     if (file.isFolder) {
      const parentPathLength = file.filePath!.split('/').length;
-     console.log(parentPathLength);
      const subFiles = await FileModel.find({
       filePath: { $regex: file.filePath, $options: 'i' },
      });
@@ -240,7 +239,6 @@ export class File {
        });
      });
     }
-    console.log(ztemp);
     temp.push(ztemp);
    }
    searchResult.file = temp;

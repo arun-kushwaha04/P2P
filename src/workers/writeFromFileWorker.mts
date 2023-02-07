@@ -4,7 +4,7 @@ import path from 'path';
 import { DOWNLOAD_FOLDER } from '../utils/constant.mjs';
 
 const ws = fs.createWriteStream(
- path.join(DOWNLOAD_FOLDER, workerData.fileName),
+ path.join(workerData.parentFolder, workerData.fileName),
  { flags: 'a', encoding: 'binary' },
 );
 

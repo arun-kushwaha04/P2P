@@ -225,19 +225,19 @@ export class Downloader {
  private async rebuildFile(folderPath: string, fileName: string) {
   let CURRENT_FOLDER = DOWNLOAD_FOLDER;
   if (this.IS_SUB_FILE) {
-   const newFolderPath = path.join(...[DOWNLOAD_FOLDER, ...this.PARENT_FOLDER]);
+   const newFolderPath = path.join(DOWNLOAD_FOLDER, ...this.PARENT_FOLDER);
    fs.mkdirSync(newFolderPath, { recursive: true });
-   CURRENT_FOLDER = DOWNLOAD_FOLDER;
+   CURRENT_FOLDER = newFolderPath;
   } else {
    fs.mkdirSync(DOWNLOAD_FOLDER, { recursive: true });
   }
   fs.closeSync(fs.openSync(path.join(CURRENT_FOLDER, fileName), 'w'));
   for (let i = 0; i < this.CHUNK_ARRAY.length; i++) {
    try {
-    await this.writeToFile(`chunk${i}`, folderPath, fileName);
+    await this.writeToFile(`chunk${i}`, folderPath, fileName, CURRENT_FOLDER);
    } catch (error) {
     console.log(chalk.red('Failed to build the file'));
-    fs.unlinkSync(path.join(DOWNLOAD_FOLDER, fileName));
+    fs.unlinkSync(path.join(CURRENT_FOLDER, fileName));
     fs.unlinkSync(folderPath);
     return;
    }
@@ -246,7 +246,7 @@ export class Downloader {
   //file rebuilded successfully now compare the hash
   const worker = new Worker('./dist/workers/fileHash.mjs', {
    workerData: {
-    filePath: path.join(DOWNLOAD_FOLDER, fileName),
+    filePath: path.join(CURRENT_FOLDER, fileName),
    },
   });
   worker.on('message', (data) => {
@@ -255,8 +255,8 @@ export class Downloader {
     fs.rmSync(folderPath, { recursive: true, force: true });
     return;
    } else {
-    console.log(chalk.red('Failed to build the file'));
-    fs.unlinkSync(path.join(DOWNLOAD_FOLDER, fileName));
+    console.log(chalk.red('Failed to build the file - hash not matched'));
+    fs.unlinkSync(path.join(CURRENT_FOLDER, fileName));
     fs.rmSync(folderPath, { recursive: true, force: true });
     return;
    }
@@ -264,27 +264,33 @@ export class Downloader {
   worker.on('error', (msg) => {
    console.log(msg);
    console.log(chalk.red('Failed to build the file'));
-   fs.unlinkSync(path.join(DOWNLOAD_FOLDER, fileName));
+   fs.unlinkSync(path.join(CURRENT_FOLDER, fileName));
    fs.rmSync(folderPath, { recursive: true, force: true });
    return;
   });
   this.destructor();
  }
 
- private writeToFile(chunkName: string, folderPath: string, fileName: string) {
+ private writeToFile(
+  chunkName: string,
+  folderPath: string,
+  fileName: string,
+  parentFolder: string,
+ ) {
   return new Promise<void>((resolve, reject) => {
    const worker = new Worker('./dist/workers/writeFromFileWorker.mjs', {
     workerData: {
      folderPath,
      fileName,
      chunkName,
+     parentFolder,
     },
    });
    worker.on('message', (data) => {
     resolve(data.val);
    });
    worker.on('error', (msg) => {
-    console.log(msg);
+    console.log('building file error', msg);
     reject(msg);
    });
   });
@@ -319,6 +325,7 @@ export class Downloader {
   FILE_MANAGER.refreshPeerList(this.FILE_HASH, this.DOWNLOADER_ID);
   setTimeout(() => {
    let chunkNumber = 0;
+   if (!ACTIVE_DOWNLOADS[downloaderId]) return;
    for (let i = 0; i < ACTIVE_DOWNLOADS[downloaderId].simuntanousDownlaod; ) {
     if (
      i > ACTIVE_DOWNLOADS[downloaderId].CHUNK_ARRAY.length ||
