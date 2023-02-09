@@ -6,15 +6,18 @@ import {
  ACTIVE_DOWNLOADS,
  FILE_MANAGER,
  UDP_SERVER,
+ decsFileTransfers,
+ incrFileTransfers,
  validateIp,
 } from '../server.mjs';
 import {
  CHUNK_TRANSFERED,
  DOWNLOAD_FOLDER,
+ LOGS,
  TEMP_FOLDER,
  delay,
 } from '../utils/constant.mjs';
-import chalk from 'chalk';
+import chalk, { Chalk } from 'chalk';
 import { Worker, workerData } from 'worker_threads';
 import pausedDownloadModel from '../files/pausedDownloadModel.mjs';
 
@@ -40,10 +43,11 @@ export class Downloader {
  private CHUNK_REQUESTED_ARRAY: number[];
  private SUB_FILES: SubFileInterface[];
  private IS_SUB_FILE: boolean;
- private PARENT_FOLDER: string[] = [];
+ private PARENT_FOLDER: string;
  private DOWNLOADER_ID: string;
- private simuntanousDownlaod: number = 5;
+ private simuntanousDownlaod: number = 1;
  private TIMER: NodeJS.Timer | null = null;
+ private isFirst: boolean = true;
 
  constructor(
   fileHash: string,
@@ -63,7 +67,9 @@ export class Downloader {
    this.IS_FOLDER = fileInfo?.isFolder!;
    this.SUB_FILES = [];
    this.IS_SUB_FILE = true;
-   this.PARENT_FOLDER = fileInfo?.parentFolder!;
+   //  this.PARENT_FOLDER = fileInfo?.parentFolder!;
+   this.PARENT_FOLDER = path.join(DOWNLOAD_FOLDER, ...fileInfo?.parentFolder!);
+   fs.mkdirSync(this.PARENT_FOLDER, { recursive: true });
   } else {
    const temp = FILE_MANAGER.getFileInfo(fileHash);
    this.PEERS = temp.peerList;
@@ -72,6 +78,7 @@ export class Downloader {
    this.IS_FOLDER = temp.isFolder;
    this.SUB_FILES = temp.subFiles ? temp.subFiles : [];
    this.IS_SUB_FILE = false;
+   this.PARENT_FOLDER = DOWNLOAD_FOLDER;
   }
   this.FOLDER_NAME = folderName;
   this.TOTAL_CHUNKS = Math.ceil(this.FILE_SIZE / CHUNK_TRANSFERED);
@@ -117,35 +124,38 @@ export class Downloader {
     await delay(5000);
    }
   }
+  console.log('Folder download completed');
  };
 
- private startDownload() {
+ private async startDownload() {
   //select a peer from list of availble peer
   //request for 5mb chunk of data
   //write this data to chunk folder created
   //writing inital data to files
-  const folderPath = path.join(TEMP_FOLDER, this.FOLDER_NAME);
-  fs.mkdirSync(folderPath, { recursive: true });
-  const ws = fs.createWriteStream(path.join(folderPath, 'info.txt'));
-  ws.write(this.FILE_HASH);
-  ws.write('\n');
-  ws.write(this.FILE_SIZE.toString());
-  ws.write('\n');
-  ws.write(JSON.stringify(this.FILE_NAMES.toString()));
-  ws.write('\n');
-  ws.write(this.PEERS.toString());
-  ws.write('\n');
-  ws.write(this.IS_FOLDER.toString());
-
-  ws.close();
+  await this.createEmptyFileOfSize(
+   path.join(this.PARENT_FOLDER, this.FILE_NAMES[0]),
+   this.FILE_SIZE,
+  );
 
   this.refeshPeerList(this.DOWNLOADER_ID);
   this.TIMER = setInterval(() => {
    this.refeshPeerList(this.DOWNLOADER_ID);
   }, 15000);
+
+  this.sendChunkRequest();
+
+  // setTimeout(() => {
+  //  heapdump.writeSnapshot(
+  //   LOGS + Date.now() + '.heapsnapshot',
+  //   function (err, filename) {
+  //    console.log('dump written to', filename);
+  //   },
+  //  );
+  // }, 60000);
  }
 
  public handleReceviedChunk(chunkNumber: number, peerIPAddr: string) {
+  decsFileTransfers();
   if (this.CHUNK_ARRAY[chunkNumber] == true) return;
   this.CHUNK_ARRAY[chunkNumber] = true;
   this.CHUNK_LEFT--;
@@ -153,73 +163,71 @@ export class Downloader {
   if (this.CHUNK_LEFT === 0) {
    console.log('Recevied all file chunks');
    delete ACTIVE_DOWNLOADS[this.DOWNLOADER_ID];
-   this.rebuildFile(
-    path.join(TEMP_FOLDER, this.FOLDER_NAME),
-    this.FILE_NAMES[0],
-   );
+   this.checkFileHealth(path.join(this.PARENT_FOLDER, this.FILE_NAMES[0]));
    return;
   }
   this.validOnlinePeer();
+  this.sendChunkRequest();
+  return;
+ }
+
+ public async handleChokedState() {
+  decsFileTransfers();
+  await delay(1000);
+  this.sendChunkRequest();
+  return;
+ }
+
+ private async sendChunkRequest() {
+  this.validOnlinePeer();
   if (this.PEERS.length > 0) {
-   if (
-    chunkNumber + this.simuntanousDownlaod < this.CHUNK_ARRAY.length &&
-    !this.CHUNK_ARRAY[chunkNumber + this.simuntanousDownlaod] &&
-    this.CHUNK_REQUESTED_ARRAY[chunkNumber + this.simuntanousDownlaod] +
-     10000 <=
-     new Date().getTime()
-   ) {
-    UDP_SERVER.sendChunkRequest(
-     this.FILE_HASH,
-     chunkNumber + this.simuntanousDownlaod,
-     this.popAndPush(),
-     this.FOLDER_NAME,
-     this.DOWNLOADER_ID,
-    );
-    this.CHUNK_REQUESTED_ARRAY[chunkNumber + this.simuntanousDownlaod] =
-     new Date().getTime();
-    return;
-   }
-
-   if (
-    chunkNumber - this.simuntanousDownlaod > 0 &&
-    !this.CHUNK_ARRAY[chunkNumber - this.simuntanousDownlaod] &&
-    this.CHUNK_REQUESTED_ARRAY[chunkNumber - this.simuntanousDownlaod] +
-     10000 <=
-     new Date().getTime()
-   ) {
-    UDP_SERVER.sendChunkRequest(
-     this.FILE_HASH,
-     chunkNumber - this.simuntanousDownlaod,
-     this.popAndPush(),
-     this.FOLDER_NAME,
-     this.DOWNLOADER_ID,
-    );
-    this.CHUNK_REQUESTED_ARRAY[chunkNumber - this.simuntanousDownlaod] =
-     new Date().getTime();
-    return;
-   }
-
+   incrFileTransfers();
    for (let i = 0; i < this.CHUNK_ARRAY.length; i++) {
-    if (
-     !this.CHUNK_ARRAY[i] &&
-     this.CHUNK_REQUESTED_ARRAY[i] + 10000 <= new Date().getTime()
-    ) {
+    if (!this.CHUNK_ARRAY[i]) {
      UDP_SERVER.sendChunkRequest(
       this.FILE_HASH,
       i,
       this.popAndPush(),
-      this.FOLDER_NAME,
+      path.join(this.PARENT_FOLDER, this.FILE_NAMES[0]),
       this.DOWNLOADER_ID,
      );
-     this.CHUNK_REQUESTED_ARRAY[i] = new Date().getTime();
      return;
     }
    }
-   return;
+   decsFileTransfers();
+   //TODO: rebuild file
   } else {
    console.log('Download paused, no peer online');
    this.pauseDownloadAndSaveState();
   }
+ }
+
+ private checkFileHealth(filePath: string) {
+  //file rebuilded successfully now compare the hash
+
+  const worker = new Worker('./dist/workers/fileHash.mjs', {
+   workerData: {
+    filePath: filePath,
+   },
+  });
+  worker.on('message', (data) => {
+   console.log(filePath, data.val, this.FILE_HASH);
+   if (data.val === this.FILE_HASH) {
+    console.log(chalk.green('Successfully builded the file'));
+    return;
+   } else {
+    console.log(chalk.red('Failed to build the file - hash not matched'));
+    // fs.unlinkSync(filePath);
+    return;
+   }
+  });
+  worker.on('error', (msg) => {
+   console.log(msg);
+   console.log(chalk.red('Failed to build the file'));
+   //  fs.unlinkSync(filePath);
+   return;
+  });
+  this.destructor();
  }
 
  private async rebuildFile(folderPath: string, fileName: string) {
@@ -250,6 +258,7 @@ export class Downloader {
    },
   });
   worker.on('message', (data) => {
+   console.log(path.join(CURRENT_FOLDER, fileName), data.val, this.FILE_HASH);
    if (data.val === this.FILE_HASH) {
     console.log(chalk.green('Successfully builded the file'));
     fs.rmSync(folderPath, { recursive: true, force: true });
@@ -314,7 +323,7 @@ export class Downloader {
  private refeshPeerList(downloaderId: string) {
   if (this.CHUNK_LEFT === 0) {
    console.log('Recevied all file chunks');
-   delete ACTIVE_DOWNLOADS[this.DOWNLOADER_ID];
+   this.destructor();
    this.rebuildFile(
     path.join(TEMP_FOLDER, this.FOLDER_NAME),
     this.FILE_NAMES[0],
@@ -323,44 +332,6 @@ export class Downloader {
   }
   // TODO:
   FILE_MANAGER.refreshPeerList(this.FILE_HASH, this.DOWNLOADER_ID);
-  setTimeout(() => {
-   let chunkNumber = 0;
-   if (!ACTIVE_DOWNLOADS[downloaderId]) return;
-   for (let i = 0; i < ACTIVE_DOWNLOADS[downloaderId].simuntanousDownlaod; ) {
-    if (
-     i > ACTIVE_DOWNLOADS[downloaderId].CHUNK_ARRAY.length ||
-     chunkNumber >= ACTIVE_DOWNLOADS[downloaderId].CHUNK_ARRAY.length
-    )
-     break;
-    if (
-     ACTIVE_DOWNLOADS[downloaderId].CHUNK_ARRAY[chunkNumber] ||
-     new Date().getTime() <=
-      ACTIVE_DOWNLOADS[downloaderId].CHUNK_REQUESTED_ARRAY[chunkNumber] + 10000
-    ) {
-     chunkNumber++;
-     continue;
-    }
-    this.validOnlinePeer();
-    if (this.PEERS.length > 0) {
-     let peerIPAddress = this.popAndPush();
-     UDP_SERVER.sendChunkRequest(
-      this.FILE_HASH,
-      chunkNumber,
-      peerIPAddress,
-      this.FOLDER_NAME,
-      this.DOWNLOADER_ID,
-     );
-     this.CHUNK_REQUESTED_ARRAY[chunkNumber] = new Date().getTime();
-     chunkNumber++;
-     i++;
-    } else {
-     console.log('Download paused, no peer online');
-     this.pauseDownloadAndSaveState();
-     break;
-    }
-   }
-  }, 5000);
-
   return;
  }
  private validOnlinePeer() {
@@ -387,5 +358,26 @@ export class Downloader {
   console.log(chalk.bgMagenta('Removing downloader', this.DOWNLOADER_ID));
   delete ACTIVE_DOWNLOADS[this.DOWNLOADER_ID];
   if (this.TIMER != null) clearInterval(this.TIMER);
+ }
+
+ private createEmptyFileOfSize(fileName: string, size: number) {
+  return new Promise((resolve, reject) => {
+   if (size < 0) {
+    reject("Error: a negative size doesn't make any sense");
+    return;
+   }
+   setTimeout(() => {
+    try {
+     let fd = fs.openSync(fileName, 'w');
+     if (size > 0) {
+      fs.writeSync(fd, Buffer.alloc(1), 0, 1, size - 1);
+     }
+     fs.closeSync(fd);
+     resolve(true);
+    } catch (error) {
+     reject(error);
+    }
+   }, 0);
+  });
  }
 }

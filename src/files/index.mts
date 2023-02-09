@@ -69,7 +69,7 @@ export class File {
  public stopSearch = () => {
   this.CURRENT_FILE_QUERY = null;
   this.SEARCH_RUNNING = false;
-  console.log(this.FILE_SEARCH_RESULT);
+  console.log(JSON.stringify(this.FILE_SEARCH_RESULT));
  };
 
  public async shareFile(filePath: string) {

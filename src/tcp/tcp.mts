@@ -1,11 +1,12 @@
 //creating tcp connections for sending message between clinets
 import net, { Server, Socket as TCPSocket } from 'net';
 import chalk from 'chalk';
+import { v4 as uuidv4 } from 'uuid';
 
-import { CHAT_MESSAGE, TCP_SERVER_PORT } from '../utils/constant.mjs';
+import { MAX_TCP_CONNECTIONS, TCP_SERVER_PORT } from '../utils/constant.mjs';
 import { closeListenerServer, dataListenerServer } from './tcpserver.mjs';
 import { dataListenerClient, sendMessageChunk } from './tcpclient.mjs';
-import { json } from 'stream/consumers';
+import { UDP_SERVER, decsFileTransfers } from '../server.mjs';
 
 //TCP packet structure
 //sampleJsonObj = {
@@ -37,6 +38,15 @@ export class TCPserver {
  //  private USER_ID: string;
  //  private USER_NAME: string;
  private TCP_SERVER: Server;
+ public ACTIVE_SOCKET_CONNECTIONS: Map<
+  string,
+  {
+   socket: net.Socket;
+   isFileTransferSocket: boolean;
+   remoteAddress: string;
+   downloaderId?: string;
+  }
+ > = new Map();
 
  constructor() {
   this.TCP_SERVER = this.createTCPserver();
@@ -47,7 +57,7 @@ export class TCPserver {
   const server: Server = net.createServer();
   server.listen(TCP_SERVER_PORT);
   //ensuring that server can only make 20 simuntanous connections
-  server.maxConnections = 20;
+  server.maxConnections = MAX_TCP_CONNECTIONS;
   return server;
  }
 
@@ -117,6 +127,7 @@ export class TCPserver {
    //will trigger when a error occurs on socket
    socket.on('error', function (error) {
     console.log(socket.remoteAddress, 'a socket error occured - ', error);
+    //TODO:
    });
 
    //will trigger when buffer is empty
@@ -133,6 +144,10 @@ export class TCPserver {
 
    //will trigger when socket closes
    socket.on('close', async (error) => {
+    if (error) {
+     console.log(chalk.red('Socket closed due to error'));
+     return;
+    }
     closeListenerServer(
      error,
      socket,
@@ -145,11 +160,18 @@ export class TCPserver {
  }
 
  //client to send packet to tcp server
- public sendToTCPServer(message: string, clientIP: string): Promise<string> {
+ public sendToTCPServer(
+  message: string,
+  clientIP: string,
+  isFileChunk: boolean = false,
+  downloaderId: string = '',
+  chunkNumber: number = 0,
+ ): Promise<string> {
   return new Promise<string>((resolve, reject) => {
    let sindex = 0;
    let eindex = 0;
    let tries = 0;
+   let socketId = uuidv4();
    //  let buffer: string;
    //  function setBuffer(tbuffer: string) {
    //   buffer = tbuffer;
@@ -184,7 +206,24 @@ export class TCPserver {
     },
    );
    socket.setEncoding('utf-8');
+   socket.on('connect', () => {
+    if (isFileChunk) {
+     this.ACTIVE_SOCKET_CONNECTIONS.set(socketId, {
+      socket,
+      isFileTransferSocket: true,
+      downloaderId,
+      remoteAddress: clientIP,
+     });
+    } else {
+     this.ACTIVE_SOCKET_CONNECTIONS.set(socketId, {
+      socket,
+      isFileTransferSocket: false,
+      remoteAddress: clientIP,
+     });
+    }
+   });
    socket.on('data', async (data: string) => {
+    //sending next chunk of data to socket server
     dataListenerClient(
      data,
      socket,
@@ -199,6 +238,16 @@ export class TCPserver {
      getEIndex,
     );
    });
+   socket.on('error', () => {
+    //TODO:
+    // UDP_SERVER.send
+    console.log(chalk.red('TCP clinet socket err'));
+   });
+   socket.on('close', (hadError) => {
+    this.ACTIVE_SOCKET_CONNECTIONS.delete(socketId);
+    if (hadError) console.log(chalk.red('Socket closed due to error'));
+    if (isFileChunk) decsFileTransfers();
+   });
   });
  }
 
@@ -206,11 +255,20 @@ export class TCPserver {
   message: any,
   clientIpAddr: string,
   messageType: number,
+  isFileChunk: boolean = false,
+  downloaderId: string = '',
+  chunkNumber: number = 0,
  ) {
   let objToSend: TCPMessage = { message, type: messageType };
   const stringObj = JSON.stringify(objToSend);
   try {
-   await this.sendToTCPServer(stringObj, clientIpAddr);
+   await this.sendToTCPServer(
+    stringObj,
+    clientIpAddr,
+    isFileChunk,
+    downloaderId,
+    chunkNumber,
+   );
   } catch (error) {
    console.log(chalk.red('Failed to send chat message'));
   }
@@ -218,9 +276,15 @@ export class TCPserver {
 
  public closeTCPServer() {
   //this function is for closing the tcp server
-  new Promise<void>((resolve, _) => {
+  return new Promise<void>(async (resolve, _) => {
+   for (let [_, value] of this.ACTIVE_SOCKET_CONNECTIONS) {
+    value.socket.emit('error');
+    if (value.isFileTransferSocket) {
+     UDP_SERVER.sendChokedState(value.downloaderId!, value.remoteAddress!);
+    }
+   }
    this.TCP_SERVER.close();
-   console.log('Stopped tcp server ');
+   await UDP_SERVER.sendLastPacket();
    resolve();
   });
  }

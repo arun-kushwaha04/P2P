@@ -10,6 +10,7 @@ import chalk from 'chalk';
 import { File } from './files/index.mjs';
 import { CHAT_MESSAGE } from './utils/constant.mjs';
 import { Downloader } from './downloader/index.mjs';
+// import heapdump from  'heapdump'
 
 export let BROADCAST_ADDR = '172.17.255.255';
 export const USER_NAME: string | null | undefined = process.argv[2];
@@ -18,6 +19,17 @@ export let UDP_SERVER: UDPSever;
 export let TCP_SERVER: TCPserver;
 export let FILE_MANAGER: File;
 export let ACTIVE_DOWNLOADS: { [key: string]: Downloader } = {};
+export let FILE_TRANSFERS: number = 0;
+
+export let incrFileTransfers = () => {
+ FILE_TRANSFERS++;
+ console.log('Current active file transfers', FILE_TRANSFERS);
+};
+
+export let decsFileTransfers = () => {
+ FILE_TRANSFERS--;
+ console.log('Current active file transfers', FILE_TRANSFERS);
+};
 
 if (!USER_NAME) {
  throw new Error('Pass argument for username');
@@ -191,11 +203,14 @@ startServer();
 
 //handling server close cases
 async function exitHandler(options: any, exitCode: any) {
- await UDP_SERVER.sendLastPacket();
- await TCP_SERVER.closeTCPServer();
- if (options.cleanup) console.log('clean');
+ if (options.cleanup) {
+  console.log('Exited');
+ }
  if (exitCode || exitCode === 0) console.log(exitCode);
- if (options.exit) process.exit();
+ if (options.exit) {
+  await TCP_SERVER.closeTCPServer();
+  process.exit();
+ }
 }
 
 //do something when app is closing

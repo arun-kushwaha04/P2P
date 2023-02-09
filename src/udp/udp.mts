@@ -12,13 +12,17 @@ import {
  CHUNK_TRANSFERED,
  FILE_SEARCH_HASH,
  FILE_SEARCH_HASH_RESPONSE,
+ MAX_FILE_TRANSFERS,
+ DOWNLOADS_CHOKED,
 } from '../utils/constant.mjs';
 import chalk from 'chalk';
 import {
  ACTIVE_DOWNLOADS,
  FILE_MANAGER,
+ FILE_TRANSFERS,
  TCP_SERVER,
  UDP_SERVER,
+ incrFileTransfers,
 } from '../server.mjs';
 import { createReadStream } from 'fs';
 import { buffer } from 'stream/consumers';
@@ -155,13 +159,31 @@ export class UDPSever {
      chalk.green(packetObjRecevied.clientUserName),
     );
     console.log(packetObjRecevied.payload?.data);
-    this.sendChunkOnTCP(
-     packetObjRecevied.payload?.data.fileHash,
-     packetObjRecevied.payload?.data.chunckNumber,
-     packetObjRecevied.ipInfo.senderIpAddr,
-     packetObjRecevied.payload?.data.folderName,
-     packetObjRecevied.payload?.data.downloaderId,
+    if (FILE_TRANSFERS < MAX_FILE_TRANSFERS) {
+     incrFileTransfers();
+     this.sendChunkOnTCP(
+      packetObjRecevied.payload?.data.fileHash,
+      packetObjRecevied.payload?.data.chunckNumber,
+      packetObjRecevied.ipInfo.senderIpAddr,
+      packetObjRecevied.payload?.data.fileName,
+      packetObjRecevied.payload?.data.downloaderId,
+     );
+    } else {
+     //send a choked state to the requester
+     this.sendChokedState(
+      packetObjRecevied.payload?.data.downloaderId,
+      packetObjRecevied.ipInfo.senderIpAddr,
+     );
+    }
+   } else if (packetObjRecevied.pktType === DOWNLOADS_CHOKED) {
+    console.log(
+     chalk.blue('File download are choked for '),
+     chalk.green(packetObjRecevied.clientUserName),
     );
+    const downloaderId = packetObjRecevied.payload?.data;
+    if (ACTIVE_DOWNLOADS[downloaderId]) {
+     ACTIVE_DOWNLOADS[downloaderId].handleChokedState();
+    }
    } else if (packetObjRecevied.pktType === FILE_SEARCH_HASH) {
     console.log(
      chalk.blue('File search by hash request'),
@@ -315,7 +337,7 @@ export class UDPSever {
   fileHash: string,
   chunckNumber: number,
   peerIPAddr: string,
-  folderName: string,
+  fileName: string,
   downloaderId: string,
  ): void {
   const objToSend: udpPacket = {
@@ -324,7 +346,7 @@ export class UDPSever {
    clientUserName: this.USER_NAME,
    currTime: new Date(),
    payload: {
-    data: { fileHash, chunckNumber, downloaderId, folderName },
+    data: { fileHash, chunckNumber, downloaderId, fileName },
     message: 'Please send chunk of this file',
    },
    ipInfo: {
@@ -384,19 +406,42 @@ export class UDPSever {
   this.sendUdpPacket(objToSend);
  };
 
+ public sendChokedState = (downloaderId: string, peerIPAddr: string): void => {
+  const objToSend: udpPacket = {
+   pktType: DOWNLOADS_CHOKED,
+   clientId: this.USER_ID,
+   clientUserName: this.USER_NAME,
+   currTime: new Date(),
+   payload: {
+    data: downloaderId,
+    message: 'Not able to process download currently in choked state',
+   },
+   ipInfo: {
+    senderPort: UDP_SERVER_PORT,
+    senderIpAddr: this.MY_IP_ADDRESS,
+    clientPort: UDP_SERVER_PORT,
+    clientIpAddr: peerIPAddr,
+   },
+  };
+  this.sendUdpPacket(objToSend);
+ };
+
  private async sendChunkOnTCP(
   fileHash: string,
   chunckNumber: number,
   clientIpAddr: string,
-  folderName: string,
+  fileName: string,
   downloaderId: string,
  ) {
   const fileBuffer: string = await this.getFileChunk(fileHash, chunckNumber);
   // console.log('File buffer created', fileBuffer);
   TCP_SERVER.sendMessage(
-   { chunckNumber, fileBuffer, folderName, downloaderId },
+   { chunckNumber, fileBuffer, fileName, downloaderId },
    clientIpAddr,
    FILE_CHUNK,
+   true,
+   downloaderId,
+   chunckNumber,
   );
  }
 

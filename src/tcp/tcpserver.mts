@@ -2,6 +2,8 @@
 
 import { Socket } from 'net';
 import { Worker } from 'worker_threads';
+import fs from 'fs';
+import path from 'path';
 import {
  TCP_MESSAGE,
  TCP_MESSAGE_LAST,
@@ -13,6 +15,7 @@ import {
  CHAT_MESSAGE,
  FILE_SEARCH_RESULT,
  FILE_CHUNK,
+ TEMP_FOLDER,
 } from '../utils/constant.mjs';
 import { generateChunkHash, parseToJson, sendTCPPacket } from './tcputils.mjs';
 import chalk from 'chalk';
@@ -98,6 +101,7 @@ export async function closeListenerServer(
    message = JSON.parse(getTcpMessage()!);
   } catch (error) {
    console.log(error);
+   //TODO: send a message to restart that download
    return;
   }
   // console.log(message);
@@ -122,10 +126,11 @@ export async function closeListenerServer(
     workerData: {
      chunckNumber: messageObj.message.chunckNumber,
      fileBuffer: messageObj.message.fileBuffer,
-     folderName: messageObj.message.folderName,
+     fileName: messageObj.message.fileName,
     },
    });
-   worker.on('message', () => {
+   worker.on('message', (msg) => {
+    console.log(msg);
     return;
    });
    worker.on('error', (msg) => {
