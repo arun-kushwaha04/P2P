@@ -22,6 +22,7 @@ import {
  FILE_MANAGER,
  FILE_TRANSFERS,
  TCP_SERVER,
+ UDP_SERVER,
  incrFileTransfers,
 } from '../server.mjs';
 
@@ -445,27 +446,27 @@ export class UDPSever {
  private async sendHeartBeat() {
   const objToSend: udpPacket = {
    pktType: UDP_HEART_BEAT,
-   clientId: this.USER_ID,
-   clientUserName: this.USER_NAME,
+   clientId: UDP_SERVER.USER_ID,
+   clientUserName: UDP_SERVER.USER_NAME,
    currTime: new Date(),
    load: Math.round((FILE_TRANSFERS / MAX_FILE_TRANSFERS) * 100) / 100,
    payload: null,
    ipInfo: {
     senderPort: UDP_SERVER_PORT,
-    senderIpAddr: this.MY_IP_ADDRESS,
+    senderIpAddr: UDP_SERVER.MY_IP_ADDRESS,
     clientPort: UDP_SERVER_PORT,
-    clientIpAddr: this.BROADCAST_ADDR,
+    clientIpAddr: UDP_SERVER.BROADCAST_ADDR,
    },
   };
-  this.sendUdpPacket(objToSend);
+  UDP_SERVER.sendUdpPacket(objToSend);
   const currentTime = new Date().getTime();
-  for (let [key, value] of this.ACTIVE_USERS) {
+  for (let [key, value] of UDP_SERVER.ACTIVE_USERS) {
    if (value.updatedAt + HEART_BEAT_GAP < currentTime) {
     // this means no new heart beat arrived remove the peer
-    this.ACTIVE_USERS.delete(key);
+    UDP_SERVER.ACTIVE_USERS.delete(key);
    }
   }
-  console.log(this.ACTIVE_USERS);
+  console.log(UDP_SERVER.ACTIVE_USERS);
   return;
  }
 
