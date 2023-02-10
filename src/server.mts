@@ -153,9 +153,9 @@ async function handleAnswer(choosenValue: string) {
  } else if (choosenValue === 'View online peers') {
   if (Object.keys(UDP_SERVER.ACTIVE_USERS).length > 0) {
    let onlinePeer: peerInfo[] = [];
-   Object.keys(UDP_SERVER.ACTIVE_USERS).forEach((key) => {
-    onlinePeer.push(UDP_SERVER.ACTIVE_USERS[key]);
-   });
+   for (let [_, value] of UDP_SERVER.ACTIVE_USERS) {
+    onlinePeer.push(value);
+   }
    console.table(onlinePeer);
   } else {
    console.log(chalk.bgRed('No online peer found in network'));
@@ -174,12 +174,7 @@ async function handleAnswer(choosenValue: string) {
 
 // validating ip enetered by user
 export const validateIp = (ip: string): boolean => {
- const keys = Object.keys(UDP_SERVER.ACTIVE_USERS);
- for (let i = 0; i < keys.length; i++) {
-  if (UDP_SERVER.ACTIVE_USERS[keys[i]].ipAddr == ip) return true;
-  else console.log(UDP_SERVER.ACTIVE_USERS[keys[i]].ipAddr);
- }
- return false;
+ return UDP_SERVER.ACTIVE_USERS.has(ip);
 };
 
 const startServer = async () => {

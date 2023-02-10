@@ -9,11 +9,12 @@ import {
  FILE_SEARCH_QUERY,
  FILE_CHUNK_REQUEST,
  FILE_CHUNK,
- CHUNK_TRANSFERED,
  FILE_SEARCH_HASH,
  FILE_SEARCH_HASH_RESPONSE,
  MAX_FILE_TRANSFERS,
  DOWNLOADS_CHOKED,
+ UDP_HEART_BEAT,
+ HEART_BEAT_GAP,
 } from '../utils/constant.mjs';
 import chalk from 'chalk';
 import {
@@ -21,21 +22,20 @@ import {
  FILE_MANAGER,
  FILE_TRANSFERS,
  TCP_SERVER,
- UDP_SERVER,
  incrFileTransfers,
 } from '../server.mjs';
-import { createReadStream } from 'fs';
-import { buffer } from 'stream/consumers';
 
 export interface peerInfo {
  ipAddr: string;
  clientId: string;
  peerUserName: string;
+ load: number;
+ updatedAt: number;
 }
 
-export interface activeUserObject {
- [key: string]: peerInfo;
-}
+// export interface activeUserObject {
+//  [key: string]: peerInfo;
+// }
 
 export interface payload {
  data: any;
@@ -48,6 +48,7 @@ interface udpPacket {
  clientUserName: string;
  payload: payload | null;
  currTime: Date;
+ load: number;
  ipInfo: {
   senderPort: number;
   senderIpAddr: string;
@@ -62,7 +63,7 @@ export class UDPSever {
  private USER_NAME: string;
  private USER_ID: string;
  public UDP_SOCKET: Socket;
- public ACTIVE_USERS: activeUserObject = {};
+ public ACTIVE_USERS: Map<string, peerInfo> = new Map();
  public MY_IP_ADDRESS: string;
 
  constructor(addr: string, userName: string, userId: string) {
@@ -89,6 +90,8 @@ export class UDPSever {
    server.setBroadcast(true);
   });
 
+  setInterval(this.sendHeartBeat, HEART_BEAT_GAP);
+
   return server;
  }
 
@@ -108,6 +111,15 @@ export class UDPSever {
     return;
    }
 
+   //updating the active user list
+   this.ACTIVE_USERS.set(rinfo.address, {
+    peerUserName: packetObjRecevied.clientUserName,
+    clientId: packetObjRecevied.clientId,
+    ipAddr: rinfo.address,
+    load: packetObjRecevied.load,
+    updatedAt: new Date().getTime(),
+   });
+
    if (packetObjRecevied.pktType === UDP_PING) {
     //adding the new client to active user object
     console.log(
@@ -116,11 +128,6 @@ export class UDPSever {
      packetObjRecevied.clientUserName,
      rinfo.address,
     );
-    this.ACTIVE_USERS[packetObjRecevied.clientId] = {
-     peerUserName: packetObjRecevied.clientUserName,
-     clientId: packetObjRecevied.clientId,
-     ipAddr: rinfo.address,
-    };
     this.sendPong(rinfo.address);
    } else if (packetObjRecevied.pktType === UDP_PONG) {
     console.log(
@@ -129,11 +136,6 @@ export class UDPSever {
      packetObjRecevied.clientUserName,
      rinfo.address,
     );
-    this.ACTIVE_USERS[packetObjRecevied.clientId] = {
-     peerUserName: packetObjRecevied.clientUserName,
-     clientId: packetObjRecevied.clientId,
-     ipAddr: rinfo.address,
-    };
    } else if (packetObjRecevied.pktType === CLOSING_PEER) {
     //removig the client form active user object
 
@@ -143,7 +145,7 @@ export class UDPSever {
      packetObjRecevied.clientUserName,
      rinfo.address,
     );
-    delete this.ACTIVE_USERS[packetObjRecevied.clientId];
+    this.ACTIVE_USERS.delete(rinfo.address);
    } else if (packetObjRecevied.pktType === FILE_SEARCH_QUERY) {
     console.log(
      chalk.blue('New file search query'),
@@ -207,6 +209,12 @@ export class UDPSever {
     ACTIVE_DOWNLOADS[packetObjRecevied.payload?.data].updatePeerList(
      packetObjRecevied.ipInfo.senderIpAddr,
     );
+   } else if (packetObjRecevied.pktType === UDP_HEART_BEAT) {
+    console.log(
+     chalk.blue('New heart beat from'),
+     chalk.green(packetObjRecevied.clientUserName),
+     chalk.magenta(rinfo.address),
+    );
    } else {
     throw new Error('Invalid packet recevied');
    }
@@ -230,6 +238,7 @@ export class UDPSever {
    clientUserName: this.USER_NAME,
    currTime: new Date(),
    payload: null,
+   load: Math.round((FILE_TRANSFERS / MAX_FILE_TRANSFERS) * 100) / 100,
    ipInfo: {
     senderPort: UDP_SERVER_PORT,
     senderIpAddr: this.MY_IP_ADDRESS,
@@ -251,6 +260,7 @@ export class UDPSever {
     clientUserName: this.USER_NAME,
     currTime: new Date(),
     payload: null,
+    load: Math.round((FILE_TRANSFERS / MAX_FILE_TRANSFERS) * 100) / 100,
     ipInfo: {
      senderPort: UDP_SERVER_PORT,
      senderIpAddr: this.MY_IP_ADDRESS,
@@ -278,6 +288,7 @@ export class UDPSever {
    clientUserName: this.USER_NAME,
    currTime: new Date(),
    payload: null,
+   load: Math.round((FILE_TRANSFERS / MAX_FILE_TRANSFERS) * 100) / 100,
    ipInfo: {
     senderPort: UDP_SERVER_PORT,
     senderIpAddr: this.MY_IP_ADDRESS,
@@ -315,6 +326,7 @@ export class UDPSever {
    clientId: this.USER_ID,
    clientUserName: this.USER_NAME,
    currTime: new Date(),
+   load: Math.round((FILE_TRANSFERS / MAX_FILE_TRANSFERS) * 100) / 100,
    payload: {
     data: queryString,
     message: 'Please search for this file',
@@ -345,6 +357,7 @@ export class UDPSever {
    clientId: this.USER_ID,
    clientUserName: this.USER_NAME,
    currTime: new Date(),
+   load: Math.round((FILE_TRANSFERS / MAX_FILE_TRANSFERS) * 100) / 100,
    payload: {
     data: { fileHash, chunckNumber, downloaderId, fileName },
     message: 'Please send chunk of this file',
@@ -369,6 +382,7 @@ export class UDPSever {
    clientId: this.USER_ID,
    clientUserName: this.USER_NAME,
    currTime: new Date(),
+   load: Math.round((FILE_TRANSFERS / MAX_FILE_TRANSFERS) * 100) / 100,
    payload: {
     data: { fileHash, downloaderId },
     message: 'Please search for this file',
@@ -392,6 +406,7 @@ export class UDPSever {
    clientId: this.USER_ID,
    clientUserName: this.USER_NAME,
    currTime: new Date(),
+   load: Math.round((FILE_TRANSFERS / MAX_FILE_TRANSFERS) * 100) / 100,
    payload: {
     data: downloaderId,
     message: 'Please search for this file',
@@ -412,6 +427,7 @@ export class UDPSever {
    clientId: this.USER_ID,
    clientUserName: this.USER_NAME,
    currTime: new Date(),
+   load: Math.round((FILE_TRANSFERS / MAX_FILE_TRANSFERS) * 100) / 100,
    payload: {
     data: downloaderId,
     message: 'Not able to process download currently in choked state',
@@ -425,6 +441,33 @@ export class UDPSever {
   };
   this.sendUdpPacket(objToSend);
  };
+
+ private async sendHeartBeat() {
+  const objToSend: udpPacket = {
+   pktType: UDP_HEART_BEAT,
+   clientId: this.USER_ID,
+   clientUserName: this.USER_NAME,
+   currTime: new Date(),
+   load: Math.round((FILE_TRANSFERS / MAX_FILE_TRANSFERS) * 100) / 100,
+   payload: null,
+   ipInfo: {
+    senderPort: UDP_SERVER_PORT,
+    senderIpAddr: this.MY_IP_ADDRESS,
+    clientPort: UDP_SERVER_PORT,
+    clientIpAddr: this.BROADCAST_ADDR,
+   },
+  };
+  this.sendUdpPacket(objToSend);
+  const currentTime = new Date().getTime();
+  for (let [key, value] of this.ACTIVE_USERS) {
+   if (value.updatedAt + HEART_BEAT_GAP < currentTime) {
+    // this means no new heart beat arrived remove the peer
+    this.ACTIVE_USERS.delete(key);
+   }
+  }
+  console.log(this.ACTIVE_USERS);
+  return;
+ }
 
  private async sendChunkOnTCP(
   fileHash: string,

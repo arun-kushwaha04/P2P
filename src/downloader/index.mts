@@ -18,7 +18,7 @@ import {
  delay,
 } from '../utils/constant.mjs';
 import chalk, { Chalk } from 'chalk';
-import { Worker, workerData } from 'worker_threads';
+import { Worker } from 'worker_threads';
 import pausedDownloadModel from '../files/pausedDownloadModel.mjs';
 
 export interface SubFileInterface {
@@ -45,9 +45,8 @@ export class Downloader {
  private IS_SUB_FILE: boolean;
  private PARENT_FOLDER: string;
  private DOWNLOADER_ID: string;
- private simuntanousDownlaod: number = 1;
  private TIMER: NodeJS.Timer | null = null;
- private isFirst: boolean = true;
+ private CHUNK_REQUESTED_FROM: string | null = null;
 
  constructor(
   fileHash: string,
@@ -129,7 +128,7 @@ export class Downloader {
 
  private async startDownload() {
   //select a peer from list of availble peer
-  //request for 5mb chunk of data
+  //request for 10mb chunk of data
   //write this data to chunk folder created
   //writing inital data to files
   await this.createEmptyFileOfSize(
@@ -137,10 +136,9 @@ export class Downloader {
    this.FILE_SIZE,
   );
 
-  this.refeshPeerList(this.DOWNLOADER_ID);
   this.TIMER = setInterval(() => {
-   this.refeshPeerList(this.DOWNLOADER_ID);
-  }, 15000);
+   this.refeshPeerList();
+  }, 20000);
 
   this.sendChunkRequest();
 
@@ -173,7 +171,7 @@ export class Downloader {
 
  public async handleChokedState() {
   decsFileTransfers();
-  await delay(1000);
+  await delay(100);
   this.sendChunkRequest();
   return;
  }
@@ -184,10 +182,11 @@ export class Downloader {
    incrFileTransfers();
    for (let i = 0; i < this.CHUNK_ARRAY.length; i++) {
     if (!this.CHUNK_ARRAY[i]) {
+     this.CHUNK_REQUESTED_FROM = this.popAndPush();
      UDP_SERVER.sendChunkRequest(
       this.FILE_HASH,
       i,
-      this.popAndPush(),
+      this.CHUNK_REQUESTED_FROM,
       path.join(this.PARENT_FOLDER, this.FILE_NAMES[0]),
       this.DOWNLOADER_ID,
      );
@@ -195,7 +194,6 @@ export class Downloader {
     }
    }
    decsFileTransfers();
-   //TODO: rebuild file
   } else {
    console.log('Download paused, no peer online');
    this.pauseDownloadAndSaveState();
@@ -320,7 +318,7 @@ export class Downloader {
   this.PEERS.unshift(peerIPAddr);
  }
 
- private refeshPeerList(downloaderId: string) {
+ private refeshPeerList() {
   if (this.CHUNK_LEFT === 0) {
    console.log('Recevied all file chunks');
    this.destructor();
@@ -332,6 +330,14 @@ export class Downloader {
   }
   // TODO:
   FILE_MANAGER.refreshPeerList(this.FILE_HASH, this.DOWNLOADER_ID);
+
+  //check if current chunk requested peer is down
+  if (
+   this.CHUNK_REQUESTED_FROM &&
+   !UDP_SERVER.ACTIVE_USERS.has(this.CHUNK_REQUESTED_FROM)
+  ) {
+   this.handleChokedState();
+  }
   return;
  }
  private validOnlinePeer() {
