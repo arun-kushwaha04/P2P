@@ -140,7 +140,6 @@ export async function closeListenerServer(
    worker.on('exit', () => {
     ACTIVE_DOWNLOADS[messageObj.message.downloaderId]?.handleReceviedChunk(
      messageObj.message.chunckNumber,
-     getClientIPAddr(),
     );
     console.log('write worker exit');
    });
