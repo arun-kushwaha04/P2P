@@ -8,8 +8,9 @@ import { UDPSever, peerInfo } from './udp/udp.mjs';
 import { TCPserver } from './tcp/tcp.mjs';
 import chalk from 'chalk';
 import { File } from './files/index.mjs';
-import { CHAT_MESSAGE } from './utils/constant.mjs';
-import { Downloader } from './downloader/index.mjs';
+import { CHAT_MESSAGE, MAX_FILE_TRANSFERS, delay } from './utils/constant.mjs';
+import { Downloader } from './downloader/downloader.mjs';
+import { ResumeDownloader } from './downloader/resumeDownloader.mjs';
 // import heapdump from  'heapdump'
 
 export let BROADCAST_ADDR = '172.17.255.255';
@@ -18,7 +19,9 @@ export const USER_ID = uuidv4();
 export let UDP_SERVER: UDPSever;
 export let TCP_SERVER: TCPserver;
 export let FILE_MANAGER: File;
-export let ACTIVE_DOWNLOADS: { [key: string]: Downloader } = {};
+export let ACTIVE_DOWNLOADS: { [key: string]: Downloader | ResumeDownloader } =
+ {};
+export let DOWNLOADER_QUEUE: string[];
 export let FILE_TRANSFERS: number = 0;
 
 export let incrFileTransfers = () => {
@@ -26,9 +29,20 @@ export let incrFileTransfers = () => {
  console.log('Current active file transfers', FILE_TRANSFERS);
 };
 
-export let decsFileTransfers = () => {
+export let decsFileTransfers = async () => {
  FILE_TRANSFERS--;
  console.log('Current active file transfers', FILE_TRANSFERS);
+ while (FILE_TRANSFERS < MAX_FILE_TRANSFERS && DOWNLOADER_QUEUE.length > 0) {
+  try {
+   incrFileTransfers();
+   const oldId = DOWNLOADER_QUEUE.shift()!;
+
+   // const dowloaderId = uuidv4();
+   // ACTIVE_DOWNLOADS[dowloaderId] = new Downloader(fileData.fileHash, dowloaderId);
+  } catch (error) {
+   decsFileTransfers();
+  }
+ }
 };
 
 if (!USER_NAME) {
@@ -194,6 +208,35 @@ const startServer = async () => {
 };
 
 startServer();
+
+async function resumeDownload(downloaderId: string) {
+ const fileData = await FILE_MANAGER.getPausedDownloadData(downloaderId);
+ ACTIVE_DOWNLOADS[downloaderId] = new ResumeDownloader(
+  downloaderId,
+  fileData.fileHash,
+ );
+ //waiting to get peer list
+ await delay(2000);
+ const peerList = (ACTIVE_DOWNLOADS[downloaderId] as ResumeDownloader).PEERS;
+ delete ACTIVE_DOWNLOADS[downloaderId];
+
+ ACTIVE_DOWNLOADS[downloaderId] = new Downloader(
+  fileData.fileHash,
+  downloaderId,
+  peerList,
+  undefined,
+  undefined,
+  fileData.chunkArray,
+  true,
+  {
+   fileName: fileData.fileName,
+   fileSize: fileData.fileSize,
+   isFolder: fileData.isFolder,
+   folderPath: fileData.folderName,
+   subFiles: fileData.subFiles,
+  },
+ );
+}
 
 //handling server close cases
 async function exitHandler(options: any, exitCode: any) {

@@ -9,6 +9,7 @@ import { Worker } from 'worker_threads';
 import { createHash } from 'crypto';
 import { BROADCAST_ADDR, TCP_SERVER, UDP_SERVER } from '../server.mjs';
 import { FILE_SEARCH_RESULT } from '../utils/constant.mjs';
+import pausedDownloadModel from './pausedDownloadModel.mjs';
 
 // declare module namespace {
 //  interface typeInterface {
@@ -333,6 +334,33 @@ export class File {
  public refreshPeerList(fileHash: string, downloaderId: string) {
   UDP_SERVER.sendFileSearchHash(fileHash, downloaderId, BROADCAST_ADDR);
   return;
+ }
+
+ public getPausedDownloadData(downloaderId: string) {
+  return new Promise<{
+   fileHash: string;
+   folderName: string;
+   fileName: string;
+   fileSize: string;
+   isFolder: boolean;
+   subFiles: any[];
+   chunkArray: boolean[];
+  }>(async (resolve, reject) => {
+   const data = await pausedDownloadModel.findOne({
+    downloaderId: downloaderId,
+   });
+   if (data)
+    resolve({
+     fileHash: data.fileHash!,
+     folderName: data.folderName!,
+     fileName: data.fileName!,
+     fileSize: data.fileSize!,
+     isFolder: data.isFolder!,
+     subFiles: data.subFiles!,
+     chunkArray: data.chunkArray,
+    });
+   else reject();
+  });
  }
 
  public searchByHash(filehash: string): Promise<boolean> {

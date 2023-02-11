@@ -4,7 +4,9 @@ import path from 'path';
 
 import {
  ACTIVE_DOWNLOADS,
+ DOWNLOADER_QUEUE,
  FILE_MANAGER,
+ FILE_TRANSFERS,
  UDP_SERVER,
  decsFileTransfers,
  incrFileTransfers,
@@ -14,7 +16,7 @@ import {
  CHUNK_TRANSFERED,
  DOWNLOAD_FOLDER,
  LOGS,
- TEMP_FOLDER,
+ MAX_FILE_TRANSFERS,
  delay,
 } from '../utils/constant.mjs';
 import chalk from 'chalk';
@@ -26,32 +28,30 @@ export interface SubFileInterface {
  fileExtentsion: string;
  fileName: string;
  fileSize: string;
- fileMimeType: string;
  isFolder: boolean;
  parentFolder: any[];
 }
 
-interface Peer {
+export interface Peer {
  ipAddr: string;
  load: number;
 }
 export class Downloader {
- private FOLDER_NAME: string;
- private FILE_HASH: string;
- private PEERS: Peer[];
- private FILE_NAMES: string[];
- private FILE_SIZE: number;
- private IS_FOLDER: boolean;
- private TOTAL_CHUNKS: number = 0;
- private CHUNK_LEFT: number = 0;
- private CHUNK_ARRAY: boolean[];
- private CHUNK_REQUESTED_ARRAY: number[];
- private SUB_FILES: SubFileInterface[];
- private IS_SUB_FILE: boolean;
- private PARENT_FOLDER: string;
- private DOWNLOADER_ID: string;
- private TIMER: NodeJS.Timer | null = null;
- private CHUNK_REQUESTED_FROM: string | null = null;
+ protected FILE_HASH: string;
+ protected PEERS: Peer[];
+ protected FILE_NAMES: string[];
+ protected FILE_SIZE: number;
+ protected IS_FOLDER: boolean;
+ protected TOTAL_CHUNKS: number = 0;
+ protected CHUNK_LEFT: number = 0;
+ protected CHUNK_ARRAY: boolean[];
+ protected CHUNK_REQUESTED_ARRAY: number[];
+ protected SUB_FILES: SubFileInterface[];
+ protected IS_SUB_FILE: boolean;
+ protected PARENT_FOLDER: string;
+ protected DOWNLOADER_ID: string;
+ protected TIMER: NodeJS.Timer | null = null;
+ protected CHUNK_REQUESTED_FROM: string | null = null;
 
  constructor(
   fileHash: string,
@@ -59,31 +59,47 @@ export class Downloader {
   peerList?: Peer[],
   fileInfo?: SubFileInterface,
   isSubFile?: boolean,
-  folderName: string = uuidv4(),
-  chunkArray?: number[],
+  chunkArray?: boolean[],
+  resumeDownload: boolean = false,
+  resumeDownloadData?: {
+   fileName: string;
+   fileSize: string;
+   isFolder: boolean;
+   folderPath: string;
+   subFiles: any[];
+  },
  ) {
   this.FILE_HASH = fileHash;
-  //TODO:implement folder download
-  if (isSubFile) {
+
+  if (resumeDownload) {
    this.PEERS = peerList!;
-   this.FILE_NAMES = [fileInfo?.fileName!];
-   this.FILE_SIZE = parseInt(fileInfo?.fileSize!);
-   this.IS_FOLDER = fileInfo?.isFolder!;
-   this.SUB_FILES = [];
-   this.IS_SUB_FILE = true;
-   this.PARENT_FOLDER = path.join(DOWNLOAD_FOLDER, ...fileInfo?.parentFolder!);
-   fs.mkdirSync(this.PARENT_FOLDER, { recursive: true });
-  } else {
-   const temp = FILE_MANAGER.getFileInfo(fileHash);
-   this.PEERS = this.mapPeerToLoad(temp.peerList);
-   this.FILE_NAMES = temp.names;
-   this.FILE_SIZE = parseInt(temp.size);
-   this.IS_FOLDER = temp.isFolder;
-   this.SUB_FILES = temp.subFiles ? temp.subFiles : [];
+   this.FILE_NAMES = [resumeDownloadData?.fileName!];
+   this.FILE_SIZE = parseInt(resumeDownloadData?.fileSize!);
+   this.IS_FOLDER = resumeDownloadData?.isFolder!;
+   this.SUB_FILES = resumeDownloadData?.subFiles!;
    this.IS_SUB_FILE = false;
-   this.PARENT_FOLDER = DOWNLOAD_FOLDER;
+   this.PARENT_FOLDER = resumeDownloadData?.folderPath!;
+  } else {
+   if (isSubFile) {
+    this.PEERS = peerList!;
+    this.FILE_NAMES = [fileInfo?.fileName!];
+    this.FILE_SIZE = parseInt(fileInfo?.fileSize!);
+    this.IS_FOLDER = fileInfo?.isFolder!;
+    this.SUB_FILES = [];
+    this.IS_SUB_FILE = true;
+    this.PARENT_FOLDER = path.join(DOWNLOAD_FOLDER, ...fileInfo?.parentFolder!);
+    fs.mkdirSync(this.PARENT_FOLDER, { recursive: true });
+   } else {
+    const temp = FILE_MANAGER.getFileInfo(fileHash);
+    this.PEERS = this.mapPeerToLoad(temp.peerList);
+    this.FILE_NAMES = temp.names;
+    this.FILE_SIZE = parseInt(temp.size);
+    this.IS_FOLDER = temp.isFolder;
+    this.SUB_FILES = temp.subFiles ? temp.subFiles : [];
+    this.IS_SUB_FILE = false;
+    this.PARENT_FOLDER = DOWNLOAD_FOLDER;
+   }
   }
-  this.FOLDER_NAME = folderName;
   this.TOTAL_CHUNKS = Math.ceil(this.FILE_SIZE / CHUNK_TRANSFERED);
   this.DOWNLOADER_ID = downloaderId;
   this.CHUNK_ARRAY = chunkArray ? chunkArray : new Array(this.TOTAL_CHUNKS);
@@ -104,7 +120,7 @@ export class Downloader {
  }
 
  //starts a folder download
- private folderDownload = async () => {
+ protected folderDownload = async () => {
   const folderPath = path.join(this.PARENT_FOLDER, this.FILE_NAMES[0]);
   fs.mkdirSync(folderPath, { recursive: true });
   let currentDownload: string = uuidv4();
@@ -133,7 +149,7 @@ export class Downloader {
  };
 
  // starts the download for a file
- private async startDownload() {
+ protected async startDownload() {
   //select a peer from list of availble peer
   //request for 10mb chunk of data
   //write this data to chunk folder created
@@ -186,7 +202,14 @@ export class Downloader {
  }
 
  // request for a file chunk in the network
- private async sendChunkRequest() {
+ protected async sendChunkRequest() {
+  // if current number of downloads is equal to max limit then add the download to queue
+  if (FILE_TRANSFERS >= MAX_FILE_TRANSFERS) {
+   console.log(chalk.blueBright('Download paused and added to download queue'));
+   DOWNLOADER_QUEUE.push(this.DOWNLOADER_ID);
+   this.pauseDownloadAndSaveState();
+   return;
+  }
   this.validOnlinePeer();
   if (this.PEERS.length > 0) {
    incrFileTransfers();
@@ -211,7 +234,7 @@ export class Downloader {
  }
 
  // compare hash of downloaded file with actual hash
- private checkFileHealth(filePath: string) {
+ protected checkFileHealth(filePath: string) {
   //file rebuilded successfully now compare the hash
   const worker = new Worker('./dist/workers/fileHash.mjs', {
    workerData: {
@@ -242,7 +265,7 @@ export class Downloader {
  }
 
  // creates a worker to write chunk to the file
- private writeToFile(
+ protected writeToFile(
   chunkName: string,
   folderPath: string,
   fileName: string,
@@ -268,7 +291,7 @@ export class Downloader {
  }
 
  //pop the front peer from peers queue and push it back to peers queue
- private popAndPush(): string | null {
+ protected popAndPush(): string | null {
   if (this.PEERS.length > 0) {
    const value = this.PEERS.shift();
    this.PEERS.push(value!);
@@ -280,7 +303,7 @@ export class Downloader {
  }
 
  //pops the front peer from the peers queue
- private pop(): string | null {
+ protected pop(): string | null {
   if (this.PEERS.length > 0) {
    const value = this.PEERS.shift();
    return value!.ipAddr;
@@ -288,7 +311,7 @@ export class Downloader {
  }
 
  //adds new peer to peers queue
- private addNewPeer(peerIPAddr: string, load: number) {
+ protected addNewPeer(peerIPAddr: string, load: number) {
   let peerExists: boolean = false;
   let oldPosition: number = 0;
   this.PEERS.forEach((peer, index) => {
@@ -305,7 +328,7 @@ export class Downloader {
  }
 
  //refreshed peer list for current download
- private refeshPeerList() {
+ protected refeshPeerList() {
   if (this.CHUNK_LEFT === 0) {
    console.log('Recevied all file chunks');
    this.checkFileHealth(path.join(this.PARENT_FOLDER, this.FILE_NAMES[0]));
@@ -323,7 +346,7 @@ export class Downloader {
   }
   return;
  }
- private validOnlinePeer() {
+ protected validOnlinePeer() {
   while (this.PEERS.length > 0 && !validateIp(this.PEERS[0].ipAddr)) {
    this.pop();
   }
@@ -331,7 +354,7 @@ export class Downloader {
  }
 
  //maps peers string array to peer queue with ip address and load param
- private mapPeerToLoad(peers: string[]) {
+ protected mapPeerToLoad(peers: string[]) {
   const loadList: Peer[] = [];
   peers.forEach((peer) => {
    if (UDP_SERVER.ACTIVE_USERS.has(peer))
@@ -349,7 +372,7 @@ export class Downloader {
  }
 
  //a function to sort peer queue based on load param
- private sortPeerArray() {
+ protected sortPeerArray() {
   this.PEERS.sort((a: Peer, b: Peer) => {
    if (a.load > b.load) return 1;
    else if (a.load < b.load) return -1;
@@ -358,14 +381,19 @@ export class Downloader {
  }
 
  //pause download and save state to database
- private async pauseDownloadAndSaveState() {
+ protected async pauseDownloadAndSaveState() {
+  this.destructor;
   const downloadState = new pausedDownloadModel({
+   downloaderId: this.DOWNLOADER_ID,
    fileHash: this.FILE_HASH,
-   folderName: this.FOLDER_NAME,
+   folderName: this.PARENT_FOLDER,
+   fileName: this.FILE_NAMES[0],
+   fileSize: this.FILE_SIZE,
+   isFolder: this.IS_FOLDER,
    chunkArray: this.CHUNK_ARRAY,
+   subFiles: this.SUB_FILES,
   });
   await downloadState.save();
-  this.destructor;
   return;
  }
 
@@ -376,14 +404,14 @@ export class Downloader {
  }
 
  //free memory resources when download completes/paused
- private destructor() {
+ protected destructor() {
   console.log(chalk.bgMagenta('Removing downloader', this.DOWNLOADER_ID));
   delete ACTIVE_DOWNLOADS[this.DOWNLOADER_ID];
   if (this.TIMER != null) clearInterval(this.TIMER);
  }
 
  //creates am empty file of specific size before download
- private createEmptyFileOfSize(fileName: string, size: number) {
+ protected createEmptyFileOfSize(fileName: string, size: number) {
   return new Promise((resolve, reject) => {
    if (size < 0) {
     reject("Error: a negative size doesn't make any sense");
