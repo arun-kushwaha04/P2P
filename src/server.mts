@@ -137,8 +137,7 @@ const startDownload = async () => {
   },
  ]);
  const dowloaderId = uuidv4();
- const downloader = new Downloader(answers.fileHash, dowloaderId);
- ACTIVE_DOWNLOADS[dowloaderId] = downloader;
+ ACTIVE_DOWNLOADS[dowloaderId] = new Downloader(answers.fileHash, dowloaderId);
  return;
 };
 
@@ -151,7 +150,7 @@ async function handleAnswer(choosenValue: string) {
   console.log(chalk.yellow(`IP address - ${UDP_SERVER.MY_IP_ADDRESS}\n`));
   console.log(chalk.yellow(`Network broadcast address - ${BROADCAST_ADDR}\n`));
  } else if (choosenValue === 'View online peers') {
-  if (Object.keys(UDP_SERVER.ACTIVE_USERS).length > 0) {
+  if (UDP_SERVER.ACTIVE_USERS.size > 0) {
    let onlinePeer: peerInfo[] = [];
    for (let [_, value] of UDP_SERVER.ACTIVE_USERS) {
     onlinePeer.push(value);

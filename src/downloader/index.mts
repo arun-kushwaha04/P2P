@@ -71,7 +71,6 @@ export class Downloader {
    this.IS_FOLDER = fileInfo?.isFolder!;
    this.SUB_FILES = [];
    this.IS_SUB_FILE = true;
-   //  this.PARENT_FOLDER = fileInfo?.parentFolder!;
    this.PARENT_FOLDER = path.join(DOWNLOAD_FOLDER, ...fileInfo?.parentFolder!);
    fs.mkdirSync(this.PARENT_FOLDER, { recursive: true });
   } else {
@@ -106,30 +105,31 @@ export class Downloader {
 
  //starts a folder download
  private folderDownload = async () => {
-  const folderPath = path.join(TEMP_FOLDER, this.FOLDER_NAME);
+  const folderPath = path.join(this.PARENT_FOLDER, this.FILE_NAMES[0]);
   fs.mkdirSync(folderPath, { recursive: true });
   let currentDownload: string = uuidv4();
   let i = 0;
   while (true) {
-   if (i >= this.SUB_FILES.length) break;
-   if (ACTIVE_DOWNLOADS[currentDownload]) continue;
-   else {
+   if (ACTIVE_DOWNLOADS[currentDownload]) {
+    await delay(5000);
+    continue;
+   } else {
+    if (i >= this.SUB_FILES.length) break;
+    console.log('Staring sub file download');
     const file = this.SUB_FILES[i];
-
-    const downloader = new Downloader(
+    currentDownload = uuidv4();
+    ACTIVE_DOWNLOADS[currentDownload] = new Downloader(
      this.SUB_FILES[i].fileHash,
      currentDownload,
      this.PEERS,
      file,
      true,
     );
-    ACTIVE_DOWNLOADS[currentDownload] = downloader;
-    currentDownload = uuidv4();
     i++;
-    await delay(5000);
    }
   }
   console.log('Folder download completed');
+  this.destructor();
  };
 
  // starts the download for a file
@@ -213,80 +213,32 @@ export class Downloader {
  // compare hash of downloaded file with actual hash
  private checkFileHealth(filePath: string) {
   //file rebuilded successfully now compare the hash
-
   const worker = new Worker('./dist/workers/fileHash.mjs', {
    workerData: {
     filePath: filePath,
    },
   });
   worker.on('message', (data) => {
-   console.log(filePath, data.val, this.FILE_HASH);
    if (data.val === this.FILE_HASH) {
-    console.log(chalk.green('Successfully builded the file'));
+    console.log(chalk.green('Successfully downloaded the file'));
+    this.destructor();
     return;
    } else {
+    //TODO: redownload the file
     console.log(chalk.red('Failed to build the file - hash not matched'));
-    // fs.unlinkSync(filePath);
+    fs.unlinkSync(filePath);
+    this.destructor();
     return;
    }
   });
   worker.on('error', (msg) => {
+   //TODO: redownload the file
    console.log(msg);
    console.log(chalk.red('Failed to build the file'));
-   //  fs.unlinkSync(filePath);
+   fs.unlinkSync(filePath);
+   this.destructor();
    return;
   });
-  this.destructor();
- }
-
- private async rebuildFile(folderPath: string, fileName: string) {
-  let CURRENT_FOLDER = DOWNLOAD_FOLDER;
-  if (this.IS_SUB_FILE) {
-   const newFolderPath = path.join(DOWNLOAD_FOLDER, ...this.PARENT_FOLDER);
-   fs.mkdirSync(newFolderPath, { recursive: true });
-   CURRENT_FOLDER = newFolderPath;
-  } else {
-   fs.mkdirSync(DOWNLOAD_FOLDER, { recursive: true });
-  }
-  fs.closeSync(fs.openSync(path.join(CURRENT_FOLDER, fileName), 'w'));
-  for (let i = 0; i < this.CHUNK_ARRAY.length; i++) {
-   try {
-    await this.writeToFile(`chunk${i}`, folderPath, fileName, CURRENT_FOLDER);
-   } catch (error) {
-    console.log(chalk.red('Failed to build the file'));
-    fs.unlinkSync(path.join(CURRENT_FOLDER, fileName));
-    fs.unlinkSync(folderPath);
-    return;
-   }
-  }
-
-  //file rebuilded successfully now compare the hash
-  const worker = new Worker('./dist/workers/fileHash.mjs', {
-   workerData: {
-    filePath: path.join(CURRENT_FOLDER, fileName),
-   },
-  });
-  worker.on('message', (data) => {
-   console.log(path.join(CURRENT_FOLDER, fileName), data.val, this.FILE_HASH);
-   if (data.val === this.FILE_HASH) {
-    console.log(chalk.green('Successfully builded the file'));
-    fs.rmSync(folderPath, { recursive: true, force: true });
-    return;
-   } else {
-    console.log(chalk.red('Failed to build the file - hash not matched'));
-    fs.unlinkSync(path.join(CURRENT_FOLDER, fileName));
-    fs.rmSync(folderPath, { recursive: true, force: true });
-    return;
-   }
-  });
-  worker.on('error', (msg) => {
-   console.log(msg);
-   console.log(chalk.red('Failed to build the file'));
-   fs.unlinkSync(path.join(CURRENT_FOLDER, fileName));
-   fs.rmSync(folderPath, { recursive: true, force: true });
-   return;
-  });
-  this.destructor();
  }
 
  // creates a worker to write chunk to the file
@@ -356,11 +308,7 @@ export class Downloader {
  private refeshPeerList() {
   if (this.CHUNK_LEFT === 0) {
    console.log('Recevied all file chunks');
-   this.destructor();
-   this.rebuildFile(
-    path.join(TEMP_FOLDER, this.FOLDER_NAME),
-    this.FILE_NAMES[0],
-   );
+   this.checkFileHealth(path.join(this.PARENT_FOLDER, this.FILE_NAMES[0]));
    return;
   }
   // TODO:
@@ -393,8 +341,8 @@ export class Downloader {
     });
   });
   loadList.sort((a: Peer, b: Peer) => {
-   if (a.load > b.load) return -1;
-   else if (a.load < b.load) return 1;
+   if (a.load > b.load) return 1;
+   else if (a.load < b.load) return -1;
    return 0;
   });
   return loadList;
@@ -403,8 +351,8 @@ export class Downloader {
  //a function to sort peer queue based on load param
  private sortPeerArray() {
   this.PEERS.sort((a: Peer, b: Peer) => {
-   if (a.load > b.load) return -1;
-   else if (a.load < b.load) return 1;
+   if (a.load > b.load) return 1;
+   else if (a.load < b.load) return -1;
    return 0;
   });
  }
