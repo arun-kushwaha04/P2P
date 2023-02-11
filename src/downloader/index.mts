@@ -17,7 +17,7 @@ import {
  TEMP_FOLDER,
  delay,
 } from '../utils/constant.mjs';
-import chalk, { Chalk } from 'chalk';
+import chalk from 'chalk';
 import { Worker } from 'worker_threads';
 import pausedDownloadModel from '../files/pausedDownloadModel.mjs';
 
@@ -30,10 +30,15 @@ export interface SubFileInterface {
  isFolder: boolean;
  parentFolder: any[];
 }
+
+interface Peer {
+ ipAddr: string;
+ load: number;
+}
 export class Downloader {
  private FOLDER_NAME: string;
  private FILE_HASH: string;
- private PEERS: string[];
+ private PEERS: Peer[];
  private FILE_NAMES: string[];
  private FILE_SIZE: number;
  private IS_FOLDER: boolean;
@@ -51,7 +56,7 @@ export class Downloader {
  constructor(
   fileHash: string,
   downloaderId: string,
-  peerList?: string[],
+  peerList?: Peer[],
   fileInfo?: SubFileInterface,
   isSubFile?: boolean,
   folderName: string = uuidv4(),
@@ -71,7 +76,7 @@ export class Downloader {
    fs.mkdirSync(this.PARENT_FOLDER, { recursive: true });
   } else {
    const temp = FILE_MANAGER.getFileInfo(fileHash);
-   this.PEERS = temp.peerList;
+   this.PEERS = this.mapPeerToLoad(temp.peerList);
    this.FILE_NAMES = temp.names;
    this.FILE_SIZE = parseInt(temp.size);
    this.IS_FOLDER = temp.isFolder;
@@ -182,7 +187,7 @@ export class Downloader {
    incrFileTransfers();
    for (let i = 0; i < this.CHUNK_ARRAY.length; i++) {
     if (!this.CHUNK_ARRAY[i]) {
-     this.CHUNK_REQUESTED_FROM = this.popAndPush();
+     this.CHUNK_REQUESTED_FROM = this.popAndPush()!;
      UDP_SERVER.sendChunkRequest(
       this.FILE_HASH,
       i,
@@ -303,19 +308,37 @@ export class Downloader {
   });
  }
 
- private popAndPush(): string {
-  const value = this.PEERS.shift();
-  this.PEERS.push(value!);
-  return value!;
+ private popAndPush(): string | null {
+  if (this.PEERS.length > 0) {
+   const value = this.PEERS.shift();
+   this.PEERS.push(value!);
+   return value!.ipAddr;
+  } else {
+   return null;
+  }
  }
 
- private pop(): string {
-  const value = this.PEERS.shift();
-  return value!;
+ private pop(): string | null {
+  if (this.PEERS.length > 0) {
+   const value = this.PEERS.shift();
+   return value!.ipAddr;
+  } else return null;
  }
 
- private pushFront(peerIPAddr: string) {
-  this.PEERS.unshift(peerIPAddr);
+ private addNewPeer(peerIPAddr: string, load: number) {
+  let peerExists: boolean = false;
+  let oldPosition: number = 0;
+  this.PEERS.forEach((peer, index) => {
+   if (peer.ipAddr === peerIPAddr) {
+    peerExists = true;
+    oldPosition = index;
+   }
+  });
+  if (peerExists) {
+   this.PEERS.splice(oldPosition, 1);
+  }
+  this.PEERS.push({ ipAddr: peerIPAddr, load });
+  this.sortPeerArray();
  }
 
  private refeshPeerList() {
@@ -341,11 +364,37 @@ export class Downloader {
   return;
  }
  private validOnlinePeer() {
-  while (this.PEERS.length > 0 && !validateIp(this.PEERS[0])) {
+  while (this.PEERS.length > 0 && !validateIp(this.PEERS[0].ipAddr)) {
    this.pop();
   }
   return;
  }
+
+ private mapPeerToLoad(peers: string[]) {
+  const loadList: Peer[] = [];
+  peers.forEach((peer) => {
+   if (UDP_SERVER.ACTIVE_USERS.has(peer))
+    loadList.push({
+     ipAddr: peer,
+     load: UDP_SERVER.ACTIVE_USERS.get(peer)?.load!,
+    });
+  });
+  loadList.sort((a: Peer, b: Peer) => {
+   if (a.load > b.load) return -1;
+   else if (a.load < b.load) return 1;
+   return 0;
+  });
+  return loadList;
+ }
+
+ private sortPeerArray(peerList?: Peer[]) {
+  this.PEERS.sort((a: Peer, b: Peer) => {
+   if (a.load > b.load) return -1;
+   else if (a.load < b.load) return 1;
+   return 0;
+  });
+ }
+
  private async pauseDownloadAndSaveState() {
   const downloadState = new pausedDownloadModel({
    fileHash: this.FILE_HASH,
@@ -356,8 +405,8 @@ export class Downloader {
   this.destructor;
   return;
  }
- public updatePeerList(peerIPAddr: string) {
-  this.pushFront(peerIPAddr);
+ public updatePeerList(peerIPAddr: string, load: number) {
+  this.addNewPeer(peerIPAddr, load);
   return;
  }
  private destructor() {

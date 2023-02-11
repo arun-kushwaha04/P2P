@@ -209,6 +209,7 @@ export class UDPSever {
     );
     ACTIVE_DOWNLOADS[packetObjRecevied.payload?.data].updatePeerList(
      packetObjRecevied.ipInfo.senderIpAddr,
+     packetObjRecevied.load,
     );
    } else if (packetObjRecevied.pktType === UDP_HEART_BEAT) {
     console.log(
