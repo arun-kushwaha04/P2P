@@ -169,6 +169,7 @@ export class Downloader {
     i++;
    }
   }
+  this.removeTempDownloadState();
   console.log('Folder download completed');
   this.destructor();
  };
@@ -356,12 +357,12 @@ export class Downloader {
 
  //refreshed peer list for current download
  protected refeshPeerList() {
-  if (this.CHUNK_LEFT === 0) {
-   console.log('Recevied all file chunks');
-   this.checkFileHealth(path.join(this.PARENT_FOLDER, this.FILE_NAMES[0]));
-   return;
-  }
-  // TODO:
+  // if (this.CHUNK_LEFT === 0) {
+  //  console.log('Recevied all file chunks');
+  //  this.checkFileHealth(path.join(this.PARENT_FOLDER, this.FILE_NAMES[0]));
+  //  return;
+  // }
+
   FILE_MANAGER.refreshPeerList(this.FILE_HASH, this.DOWNLOADER_ID);
 
   //check if current chunk requested peer is down
@@ -420,8 +421,8 @@ export class Downloader {
     fileSize: this.FILE_SIZE,
     isFolder: this.IS_FOLDER,
     chunkArray: this.CHUNK_ARRAY,
-    isSubFile: this.SUB_FILES,
-    subFiles: this.IS_SUB_FILE,
+    subFiles: this.SUB_FILES,
+    isSubFile: this.IS_SUB_FILE,
     subFileIds: this.SUB_FILE_ID,
    },
    {

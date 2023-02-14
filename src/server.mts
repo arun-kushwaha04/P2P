@@ -21,7 +21,7 @@ export let TCP_SERVER: TCPserver;
 export let FILE_MANAGER: File;
 export let ACTIVE_DOWNLOADS: { [key: string]: Downloader | ResumeDownloader } =
  {};
-export let DOWNLOADER_QUEUE: string[];
+export let DOWNLOADER_QUEUE: string[] = [];
 export let FILE_TRANSFERS: number = 0;
 
 export let incrFileTransfers = () => {
