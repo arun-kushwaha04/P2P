@@ -209,7 +209,8 @@ const startServer = async () => {
 
 startServer();
 
-async function resumeDownload(downloaderId: string) {
+export async function resumeFileDownload(downloaderId: string) {
+ //file download resume
  const fileData = await FILE_MANAGER.getPausedDownloadData(downloaderId);
  ACTIVE_DOWNLOADS[downloaderId] = new ResumeDownloader(
   downloaderId,
@@ -225,7 +226,7 @@ async function resumeDownload(downloaderId: string) {
   downloaderId,
   peerList,
   undefined,
-  undefined,
+  fileData.isSubFile,
   fileData.chunkArray,
   true,
   {
@@ -234,6 +235,7 @@ async function resumeDownload(downloaderId: string) {
    isFolder: fileData.isFolder,
    folderPath: fileData.folderName,
    subFiles: fileData.subFiles,
+   subFileIds: fileData.subFileIds,
   },
  );
 }

@@ -10,6 +10,7 @@ import {
  UDP_SERVER,
  decsFileTransfers,
  incrFileTransfers,
+ resumeFileDownload,
  validateIp,
 } from '../server.mjs';
 import {
@@ -52,6 +53,10 @@ export class Downloader {
  protected DOWNLOADER_ID: string;
  protected TIMER: NodeJS.Timer | null = null;
  protected CHUNK_REQUESTED_FROM: string | null = null;
+ protected SUB_FILE_ID: {
+  downloaderId: string | null;
+  isDownloadStarted: boolean;
+ }[] = [];
 
  constructor(
   fileHash: string,
@@ -67,6 +72,10 @@ export class Downloader {
    isFolder: boolean;
    folderPath: string;
    subFiles: any[];
+   subFileIds: {
+    downloaderId: string | null;
+    isDownloadStarted: boolean;
+   }[];
   },
  ) {
   this.FILE_HASH = fileHash;
@@ -77,8 +86,9 @@ export class Downloader {
    this.FILE_SIZE = parseInt(resumeDownloadData?.fileSize!);
    this.IS_FOLDER = resumeDownloadData?.isFolder!;
    this.SUB_FILES = resumeDownloadData?.subFiles!;
-   this.IS_SUB_FILE = false;
+   this.IS_SUB_FILE = isSubFile!;
    this.PARENT_FOLDER = resumeDownloadData?.folderPath!;
+   this.SUB_FILE_ID = resumeDownloadData?.subFileIds!;
   } else {
    if (isSubFile) {
     this.PEERS = peerList!;
@@ -99,6 +109,9 @@ export class Downloader {
     this.IS_SUB_FILE = false;
     this.PARENT_FOLDER = DOWNLOAD_FOLDER;
    }
+   this.SUB_FILES.forEach(() => {
+    this.SUB_FILE_ID.push({ downloaderId: null, isDownloadStarted: false });
+   });
   }
   this.TOTAL_CHUNKS = Math.ceil(this.FILE_SIZE / CHUNK_TRANSFERED);
   this.DOWNLOADER_ID = downloaderId;
@@ -124,6 +137,7 @@ export class Downloader {
   const folderPath = path.join(this.PARENT_FOLDER, this.FILE_NAMES[0]);
   fs.mkdirSync(folderPath, { recursive: true });
   let currentDownload: string = uuidv4();
+
   let i = 0;
   while (true) {
    if (ACTIVE_DOWNLOADS[currentDownload]) {
@@ -131,16 +145,27 @@ export class Downloader {
     continue;
    } else {
     if (i >= this.SUB_FILES.length) break;
-    console.log('Staring sub file download');
-    const file = this.SUB_FILES[i];
-    currentDownload = uuidv4();
-    ACTIVE_DOWNLOADS[currentDownload] = new Downloader(
-     this.SUB_FILES[i].fileHash,
-     currentDownload,
-     this.PEERS,
-     file,
-     true,
-    );
+    if (this.SUB_FILE_ID[i].isDownloadStarted === false) {
+     console.log('Staring sub file download');
+     const file = this.SUB_FILES[i];
+     currentDownload = uuidv4();
+     this.SUB_FILE_ID[i] = {
+      downloaderId: currentDownload,
+      isDownloadStarted: true,
+     };
+     ACTIVE_DOWNLOADS[currentDownload] = new Downloader(
+      this.SUB_FILES[i].fileHash,
+      currentDownload,
+      this.PEERS,
+      file,
+      true,
+     );
+     this.pauseDownloadAndSaveState(false);
+    } else {
+     //reusme the old download
+     currentDownload = this.SUB_FILE_ID[i].downloaderId!;
+     resumeFileDownload(currentDownload);
+    }
     i++;
    }
   }
@@ -177,6 +202,7 @@ export class Downloader {
 
  // handles the recevied chunk from the network
  public handleReceviedChunk(chunkNumber: number) {
+  this.pauseDownloadAndSaveState(false);
   decsFileTransfers();
   if (this.CHUNK_ARRAY[chunkNumber] == true) return;
   this.CHUNK_ARRAY[chunkNumber] = true;
@@ -207,7 +233,7 @@ export class Downloader {
   if (FILE_TRANSFERS >= MAX_FILE_TRANSFERS) {
    console.log(chalk.blueBright('Download paused and added to download queue'));
    DOWNLOADER_QUEUE.push(this.DOWNLOADER_ID);
-   this.pauseDownloadAndSaveState();
+   this.pauseDownloadAndSaveState(true);
    return;
   }
   this.validOnlinePeer();
@@ -229,13 +255,14 @@ export class Downloader {
    decsFileTransfers();
   } else {
    console.log('Download paused, no peer online');
-   this.pauseDownloadAndSaveState();
+   this.pauseDownloadAndSaveState(true);
   }
  }
 
  // compare hash of downloaded file with actual hash
  protected checkFileHealth(filePath: string) {
   //file rebuilded successfully now compare the hash
+  this.removeTempDownloadState();
   const worker = new Worker('./dist/workers/fileHash.mjs', {
    workerData: {
     filePath: filePath,
@@ -381,19 +408,33 @@ export class Downloader {
  }
 
  //pause download and save state to database
- protected async pauseDownloadAndSaveState() {
-  this.destructor;
-  const downloadState = new pausedDownloadModel({
-   downloaderId: this.DOWNLOADER_ID,
-   fileHash: this.FILE_HASH,
-   folderName: this.PARENT_FOLDER,
-   fileName: this.FILE_NAMES[0],
-   fileSize: this.FILE_SIZE,
-   isFolder: this.IS_FOLDER,
-   chunkArray: this.CHUNK_ARRAY,
-   subFiles: this.SUB_FILES,
-  });
-  await downloadState.save();
+ protected async pauseDownloadAndSaveState(exit: boolean = false) {
+  if (exit) this.destructor;
+  await pausedDownloadModel.updateOne(
+   { downloaderId: this.DOWNLOADER_ID },
+   {
+    downloaderId: this.DOWNLOADER_ID,
+    fileHash: this.FILE_HASH,
+    folderName: this.PARENT_FOLDER,
+    fileName: this.FILE_NAMES[0],
+    fileSize: this.FILE_SIZE,
+    isFolder: this.IS_FOLDER,
+    chunkArray: this.CHUNK_ARRAY,
+    isSubFile: this.SUB_FILES,
+    subFiles: this.IS_SUB_FILE,
+    subFileIds: this.SUB_FILE_ID,
+   },
+   {
+    upsert: true,
+   },
+  );
+  // await downloadState.save();
+  return;
+ }
+
+ //clear temproray state from downloader
+ protected async removeTempDownloadState() {
+  await pausedDownloadModel.deleteOne({ downloaderId: this.DOWNLOADER_ID });
   return;
  }
 

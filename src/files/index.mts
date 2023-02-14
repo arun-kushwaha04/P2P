@@ -345,6 +345,11 @@ export class File {
    isFolder: boolean;
    subFiles: any[];
    chunkArray: boolean[];
+   isSubFile: boolean;
+   subFileIds: {
+    downloaderId: string | null;
+    isDownloadStarted: boolean;
+   }[];
   }>(async (resolve, reject) => {
    const data = await pausedDownloadModel.findOne({
     downloaderId: downloaderId,
@@ -357,6 +362,8 @@ export class File {
      fileSize: data.fileSize!,
      isFolder: data.isFolder!,
      subFiles: data.subFiles!,
+     isSubFile: data.isSubFile!,
+     subFileIds: data.subFileIds!,
      chunkArray: data.chunkArray,
     });
    else reject();

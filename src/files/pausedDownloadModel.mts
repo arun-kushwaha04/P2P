@@ -25,12 +25,17 @@ const download = new mongoose.Schema({
   type: 'boolean',
   require: true,
  },
+ isSubFile: {
+  type: 'boolean',
+  require: true,
+ },
  chunkArray: [
   {
    type: 'Boolean',
   },
  ],
  subFiles: { type: Array, default: [] },
+ subFileIds: { type: Array, default: [] },
 });
 
 export default mongoose.model('Pausedownload', download);

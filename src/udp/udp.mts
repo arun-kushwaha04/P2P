@@ -25,6 +25,7 @@ import {
  UDP_SERVER,
  incrFileTransfers,
 } from '../server.mjs';
+import { Downloader } from '../downloader/downloader.mjs';
 
 export interface peerInfo {
  ipAddr: string;
@@ -185,7 +186,7 @@ export class UDPSever {
     );
     const downloaderId = packetObjRecevied.payload?.data;
     if (ACTIVE_DOWNLOADS[downloaderId]) {
-     ACTIVE_DOWNLOADS[downloaderId].handleChokedState();
+     (ACTIVE_DOWNLOADS[downloaderId] as Downloader).handleChokedState();
     }
    } else if (packetObjRecevied.pktType === FILE_SEARCH_HASH) {
     console.log(
