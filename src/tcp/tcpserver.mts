@@ -20,6 +20,7 @@ import {
 import { generateChunkHash, parseToJson, sendTCPPacket } from './tcputils.mjs';
 import chalk from 'chalk';
 import { ACTIVE_DOWNLOADS, FILE_MANAGER } from '../server.mjs';
+import { Downloader } from '../downloader/downloader.mjs';
 
 export async function dataListenerServer(
  data: Buffer,
@@ -138,9 +139,9 @@ export async function closeListenerServer(
     return;
    });
    worker.on('exit', () => {
-    ACTIVE_DOWNLOADS[messageObj.message.downloaderId]?.handleReceviedChunk(
-     messageObj.message.chunckNumber,
-    );
+    (
+     ACTIVE_DOWNLOADS[messageObj.message.downloaderId] as Downloader
+    ).handleReceviedChunk(messageObj.message.chunckNumber);
     console.log('write worker exit');
    });
   }
