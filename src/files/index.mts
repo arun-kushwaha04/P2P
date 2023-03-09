@@ -206,9 +206,11 @@ export class File {
  }
 
  public async searchFile(searchQuery: string, clientIpAddr: string) {
-  console.log('Searching file logs', searchQuery);
+  let newSearchQuery = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  newSearchQuery = '/' + newSearchQuery + '/';
+  console.log('Searching file logs', newSearchQuery);
   const files = await FileModel.find({
-   fileName: { $regex: searchQuery, $options: 'i' },
+   fileName: { $regex: newSearchQuery, $options: 'si' },
   });
   if (files.length > 0) {
    const searchResult: any = { searchQuery };
