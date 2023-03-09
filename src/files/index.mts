@@ -7,7 +7,12 @@ import { connectToDB } from './db.mjs';
 import FileModel from './fileModel.mjs';
 import { Worker } from 'worker_threads';
 import { createHash } from 'crypto';
-import { BROADCAST_ADDR, TCP_SERVER, UDP_SERVER } from '../server.mjs';
+import {
+ BROADCAST_ADDR,
+ SOKCET_SERVER,
+ TCP_SERVER,
+ UDP_SERVER,
+} from '../server.mjs';
 import { FILE_SEARCH_RESULT } from '../utils/constant.mjs';
 import pausedDownloadModel from './pausedDownloadModel.mjs';
 
@@ -25,7 +30,7 @@ import pausedDownloadModel from './pausedDownloadModel.mjs';
 //  }
 // }
 
-declare module namespace {
+export declare module namespace {
  export interface FileName {
   [fileName: string]: string[];
  }
@@ -71,6 +76,7 @@ export class File {
   this.CURRENT_FILE_QUERY = null;
   this.SEARCH_RUNNING = false;
   console.log(JSON.stringify(this.FILE_SEARCH_RESULT));
+  SOKCET_SERVER.sendFileSearchResponse(this.FILE_SEARCH_RESULT);
  };
 
  public async shareFile(filePath: string) {

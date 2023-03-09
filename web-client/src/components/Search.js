@@ -19,6 +19,7 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import { HeadingText } from '../utilities/SharedStyledComponents';
 import NoSearchResultGif from '../assets/no-result.gif';
 import { formatBytes } from '../utilities/utility';
+import { searchForResource } from '../utilities/search';
 
 const columns = [
  { id: 's.no', label: 'S.No', minWidth: 10 },
@@ -104,6 +105,11 @@ export default function Search() {
  const [formattedSearchResult, setFormattedSearchResult] = React.useState(null);
  const [expanded, setExpanded] = React.useState({});
 
+ const handleSearch = () => {
+  searchForResource(searchText, setSearchResult);
+  // console.log('search', result);
+ };
+
  React.useEffect(() => {
   formatSearchResult(setFormattedSearchResult, searchResult, setExpanded);
  }, [searchResult]);
@@ -129,7 +135,7 @@ export default function Search() {
        </InputAdornment>
       }
      />
-     <Button size='small' variant='contained'>
+     <Button size='small' variant='contained' onClick={handleSearch}>
       Search
      </Button>
     </FormControl>
@@ -206,8 +212,8 @@ export default function Search() {
                }}
               >
                <p style={{ fontWeight: 'bold' }}>Ohter Names</p>
-               {row.files.map((file) => (
-                <p key={file}>{file}</p>
+               {row.files.map((file, index) => (
+                <p key={`${file}-${index}`}>{file}</p>
                ))}
               </div>
              )}
