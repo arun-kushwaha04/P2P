@@ -2,22 +2,29 @@
 
 import { program } from 'commander';
 import inquirer from 'inquirer';
+import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { exit } from 'process';
 import { UDPSever, peerInfo } from './udp/udp.mjs';
 import { TCPserver } from './tcp/tcp.mjs';
 import chalk from 'chalk';
 import { File } from './files/index.mjs';
-import { CHAT_MESSAGE, MAX_FILE_TRANSFERS, delay } from './utils/constant.mjs';
+import {
+ CHAT_MESSAGE,
+ DOWNLOAD_FOLDER,
+ MAX_FILE_TRANSFERS,
+ delay,
+} from './utils/constant.mjs';
 import { Downloader } from './downloader/downloader.mjs';
 import { ResumeDownloader } from './downloader/resumeDownloader.mjs';
-// import heapdump from  'heapdump'
+import { SocketServer } from './socket/index.mjs';
 
-export let BROADCAST_ADDR = '172.17.255.255';
+export let BROADCAST_ADDR = '192.168.1.255';
 export const USER_NAME: string | null | undefined = process.argv[2];
 export const USER_ID = uuidv4();
 export let UDP_SERVER: UDPSever;
 export let TCP_SERVER: TCPserver;
+export let SOKCET_SERVER: SocketServer;
 export let FILE_MANAGER: File;
 export let ACTIVE_DOWNLOADS: { [key: string]: Downloader | ResumeDownloader } =
  {};
@@ -202,6 +209,9 @@ const startServer = async () => {
  //  creating a TCP server
  TCP_SERVER = new TCPserver();
 
+ // creating a socket server
+ SOKCET_SERVER = new SocketServer();
+
  setTimeout(() => {
   (async () => await prompt())();
  }, 2000);
@@ -238,6 +248,12 @@ export async function resumeFileDownload(downloaderId: string) {
    subFileIds: fileData.subFileIds,
   },
  );
+}
+
+if (!fs.existsSync(DOWNLOAD_FOLDER)) {
+ fs.mkdirSync(DOWNLOAD_FOLDER, { recursive: true });
+
+ console.log('Download Folder Created');
 }
 
 //handling server close cases

@@ -1,9 +1,11 @@
 import os from 'os';
+import path from 'path';
 //defining server contantas here
 
 //application constants
 export const UDP_SERVER_PORT: number = 1050;
 export const TCP_SERVER_PORT: number = 1150;
+export const SOCKET_SERVER_PORT: number = 1250;
 export const TCP_PACKET_SIZE: number = 1000;
 export const MAX_TRIES: number = 5;
 export const FILE_SEARCH_RESULT: number = 23543;
@@ -14,9 +16,11 @@ export const CHUNK_TRANSFERED: number = 100 * 1024 * 1024;
 export const MAX_TCP_CONNECTIONS: number = 20;
 export const MAX_FILE_TRANSFERS: number = 5;
 export const HEART_BEAT_GAP = 60 * 1000; //1 min
-export const TEMP_FOLDER: string = `${os.homedir()}/P2P/temp`;
-export const DOWNLOAD_FOLDER: string = `${os.homedir()}/P2P/downloads`;
-export const LOGS: string = `${os.homedir()}/P2P/logs`;
+
+export const DOWNLOAD_FOLDER: string = path.normalize(
+ `${os.homedir()}/Downloads/P2P/downloads`,
+);
+export const LOGS: string = path.normalize(`${os.homedir()}/P2P/logs`);
 
 //udp packets constants
 export const UDP_PING: number = 1;

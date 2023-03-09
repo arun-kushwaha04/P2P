@@ -1,6 +1,6 @@
 import { parentPort, workerData } from 'worker_threads';
 import fs, { unwatchFile } from 'fs';
-import { CHUNK_TRANSFERED, TEMP_FOLDER } from '../utils/constant.mjs';
+import { CHUNK_TRANSFERED } from '../utils/constant.mjs';
 
 // const fileSize = fs.statSync(workerData.fileName).size;
 

@@ -15,7 +15,6 @@ import {
  CHAT_MESSAGE,
  FILE_SEARCH_RESULT,
  FILE_CHUNK,
- TEMP_FOLDER,
 } from '../utils/constant.mjs';
 import { generateChunkHash, parseToJson, sendTCPPacket } from './tcputils.mjs';
 import chalk from 'chalk';
