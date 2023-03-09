@@ -206,6 +206,7 @@ export class File {
  }
 
  public async searchFile(searchQuery: string, clientIpAddr: string) {
+  console.log('Searching file logs', searchQuery);
   const files = await FileModel.find({
    fileName: { $regex: searchQuery, $options: 'i' },
   });
