@@ -410,7 +410,6 @@ export class Downloader {
 
  //pause download and save state to database
  protected async pauseDownloadAndSaveState(exit: boolean = false) {
-  if (exit) this.destructor;
   await pausedDownloadModel.updateOne(
    { downloaderId: this.DOWNLOADER_ID },
    {
@@ -430,6 +429,7 @@ export class Downloader {
    },
   );
   // await downloadState.save();
+  if (exit) this.destructor;
   return;
  }
 

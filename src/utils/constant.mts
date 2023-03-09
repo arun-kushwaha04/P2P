@@ -4,12 +4,13 @@ import os from 'os';
 //application constants
 export const UDP_SERVER_PORT: number = 1050;
 export const TCP_SERVER_PORT: number = 1150;
-export const TCP_PACKET_SIZE: number = 5000;
+export const TCP_PACKET_SIZE: number = 1000;
 export const MAX_TRIES: number = 5;
 export const FILE_SEARCH_RESULT: number = 23543;
 export const CHAT_MESSAGE: number = 2342;
 export const FILE_CHUNK: number = 3456;
-export const CHUNK_TRANSFERED: number = 10 * 1024 * 1024;
+// export const CHUNK_TRANSFERED: number = 1024;
+export const CHUNK_TRANSFERED: number = 100 * 1024 * 1024;
 export const MAX_TCP_CONNECTIONS: number = 20;
 export const MAX_FILE_TRANSFERS: number = 5;
 export const HEART_BEAT_GAP = 60 * 1000; //1 min

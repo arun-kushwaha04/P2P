@@ -30,6 +30,7 @@ export function sendMessageChunk(
  [buffer, eindex] = generateBufferChunk(message, sindex);
  seteIndex(eindex);
 
+ console.log('message length index chekck', sindex, eindex);
  //chekcing for last data packet of the message
  if (eindex === message.length)
   sendTCPPacket(
