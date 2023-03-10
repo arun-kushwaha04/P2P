@@ -407,7 +407,7 @@ export class File {
  }
 
  public getPausedDownloads = async () => {
-  const downloads = await pausedDownloadModel.find({});
+  const downloads = await pausedDownloadModel.find();
   const pausedDownloads: DownloadInfo[] = [];
 
   downloads.forEach((download) => {

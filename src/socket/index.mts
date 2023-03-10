@@ -80,8 +80,9 @@ export class SocketServer {
    });
 
    //get paused downloads
-   socket.on('get_paused_download', () => {
-    const downloads = FILE_MANAGER.getPausedDownloads();
+   socket.on('get_paused_download', async () => {
+    console.log('Getting paused downloads');
+    const downloads = await FILE_MANAGER.getPausedDownloads();
     socket.emit('paused_download_info', downloads);
     return;
    });

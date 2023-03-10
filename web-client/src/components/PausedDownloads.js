@@ -109,7 +109,7 @@ export default function PausedDownloads() {
          </TableCell>
          <TableCell align='center'>
           <Button onClick={() => console.log(row.fileHash)}>
-           Pause Download
+           Resume Download
           </Button>
          </TableCell>
         </TableRow>
@@ -120,7 +120,7 @@ export default function PausedDownloads() {
    ) : (
     <NoDownloadDiv>
      <img src={NoActiveDownloadGIF} alt='No acitve download gif' />
-     <HeadingText>No Active Downloads</HeadingText>
+     <HeadingText>No Paused Downloads</HeadingText>
     </NoDownloadDiv>
    )}
   </MainSection>
