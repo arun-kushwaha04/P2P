@@ -15,6 +15,11 @@ import Socket from './utilities/socketConfig';
 
 function App() {
  const { collapseSidebar } = useProSidebar();
+ const [navButtonSelected, setSelectedNavButton] = React.useState('home');
+
+ const navButtonClickHandler = (navId) => {
+  setSelectedNavButton(navId);
+ };
 
  React.useEffect(() => {
   Socket.on('connection_succeed', () => {
@@ -39,15 +44,63 @@ function App() {
        <h2>P2P</h2>
       </MenuItem>
 
-      <MenuItem icon={<HomeOutlinedIcon />}>Home</MenuItem>
-      <MenuItem icon={<DownloadOutlinedIcon />}>Active Downloads</MenuItem>
-      <MenuItem icon={<PauseOutlinedIcon />}>Paused Downloads</MenuItem>
-      <MenuItem icon={<ShareOutlinedIcon />}>Shared Files</MenuItem>
-      <MenuItem icon={<ChatOutlinedIcon />}>Chat On LAN</MenuItem>
+      <MenuItem
+       icon={<HomeOutlinedIcon />}
+       onClick={() => navButtonClickHandler('home')}
+       className={navButtonSelected === 'home' ? 'selected_nav_button' : ''}
+      >
+       Home
+      </MenuItem>
+      <MenuItem
+       icon={<DownloadOutlinedIcon />}
+       onClick={() => navButtonClickHandler('active_downloads')}
+       className={
+        navButtonSelected === 'active_downloads' ? 'selected_nav_button' : ''
+       }
+      >
+       Active Downloads
+      </MenuItem>
+      <MenuItem
+       icon={<PauseOutlinedIcon />}
+       onClick={() => navButtonClickHandler('paused_downloads')}
+       className={
+        navButtonSelected === 'paused_downloads' ? 'selected_nav_button' : ''
+       }
+      >
+       Paused Downloads
+      </MenuItem>
+      <MenuItem
+       icon={<ShareOutlinedIcon />}
+       onClick={() => navButtonClickHandler('share_files')}
+       className={
+        navButtonSelected === 'share_files' ? 'selected_nav_button' : ''
+       }
+      >
+       Shared Files
+      </MenuItem>
+      <MenuItem
+       icon={<ChatOutlinedIcon />}
+       onClick={() => navButtonClickHandler('chat')}
+       className={navButtonSelected === 'chat' ? 'selected_nav_button' : ''}
+      >
+       Chat On LAN
+      </MenuItem>
      </Menu>
     </Sidebar>
     <MainSection>
-     <Search />
+     {navButtonSelected === 'home' ? (
+      <Search />
+     ) : navButtonSelected === 'active_downloads' ? (
+      <>active downloads</>
+     ) : navButtonSelected === 'paused_downloads' ? (
+      <>paused downloads</>
+     ) : navButtonSelected === 'share_files' ? (
+      <>share files</>
+     ) : navButtonSelected === 'chat' ? (
+      <>chat</>
+     ) : (
+      <>No such page exists</>
+     )}
     </MainSection>
    </div>
   </>

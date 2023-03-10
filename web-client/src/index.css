@@ -49,3 +49,7 @@ yellow {
     font-size: 0.75rem !important;
     font-weight: bold !important;
 }
+
+.selected_nav_button {
+    background: var(--grey-light);
+}
