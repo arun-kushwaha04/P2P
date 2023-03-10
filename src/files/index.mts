@@ -95,48 +95,60 @@ export class File {
        const info = fs.readdirSync(filePath, { withFileTypes: true });
        const fhash = createHash('sha256');
        fileSize = 0;
-       const promiseArray = [];
-       for (let item of info) {
-        const newPath = path.join(filePath, item.name);
-        promiseArray.push(this.shareFile(newPath));
+       //  const promiseArray = [];
+
+       for (let i = 0; i < info.length; i++) {
+        const newPath = path.join(filePath, info[i].name);
+        try {
+         const result = await this.shareFile(newPath);
+         fileSize += result.fileSize;
+         fhash.update(result.fileHash);
+        } catch (e) {
+         console.log(e);
+         reject();
+        }
        }
 
-       Promise.allSettled(promiseArray).then(async (results) => {
-        results.forEach((result) => {
-         if (result.status === 'rejected') reject();
-         else {
-          fileSize += result.value.fileSize;
-          fhash.update(result.value.fileHash);
-         }
-        });
-        const fileHash = fhash.digest('hex');
-        const file = await FileModel.findOne({ filePath: filePath });
-        if (file) {
-         file.fileExtentsion = fileExtentsion;
-         file.fileMimeType = fileMimeType.toString();
-         file.fileName = fileName;
-         file.fileSize = fileSize.toString();
-         file.fileHash = fileHash;
-         file.isFolder = true;
+       //  for (let item of info) {
+       //   const newPath = path.join(filePath, item.name);
+       //   promiseArray.push(this.shareFile(newPath));
+       //  }
 
-         file.save();
-         console.log(chalk.bgGreen('Folder shared in the network'));
-         resolve({ fileHash, fileSize });
-        } else {
-         const file = new FileModel({
-          fileExtentsion,
-          fileMimeType,
-          fileName,
-          filePath,
-          fileSize: fileSize.toString(),
-          fileHash,
-          isFolder: true,
-         });
-         file.save();
-         console.log(chalk.bgGreen('Folder shared in the network'));
-         resolve({ fileHash, fileSize });
-        }
-       });
+       //  Promise.allSettled(promiseArray).then(async (results) => {
+       //   results.forEach((result) => {
+       //    if (result.status === 'rejected') reject();
+       //    else {
+       //     fileSize += result.value.fileSize;
+       //     fhash.update(result.value.fileHash);
+       //    }
+       //   });
+       const fileHash = fhash.digest('hex');
+       const file = await FileModel.findOne({ filePath: filePath });
+       if (file) {
+        file.fileExtentsion = fileExtentsion;
+        file.fileMimeType = fileMimeType.toString();
+        file.fileName = fileName;
+        file.fileSize = fileSize.toString();
+        file.fileHash = fileHash;
+        file.isFolder = true;
+
+        file.save();
+        console.log(chalk.bgGreen('Folder shared in the network'));
+        resolve({ fileHash, fileSize });
+       } else {
+        const file = new FileModel({
+         fileExtentsion,
+         fileMimeType,
+         fileName,
+         filePath,
+         fileSize: fileSize.toString(),
+         fileHash,
+         isFolder: true,
+        });
+        file.save();
+        console.log(chalk.bgGreen('Folder shared in the network'));
+        resolve({ fileHash, fileSize });
+       }
       } else {
        this.generateHash(filePath, fileSize)
         .then(async (fileHash) => {
