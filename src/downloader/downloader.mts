@@ -37,6 +37,16 @@ export interface Peer {
  ipAddr: string;
  load: number;
 }
+
+export interface DownloadInfo {
+ fileName: string;
+ fileSize: number;
+ isFolder: boolean;
+ totalChunks: number;
+ chunksDownlaoded: number;
+ currentChunkPullingFrom: string;
+ subFiles: DownloadInfo[];
+}
 export class Downloader {
  protected FILE_HASH: string;
  protected PEERS: Peer[];
@@ -473,4 +483,32 @@ export class Downloader {
    }, 0);
   });
  }
+
+ public getDownloadInfo = (): DownloadInfo => {
+  const downloadObject: DownloadInfo = {
+   fileName: this.FILE_NAMES[0],
+   fileSize: this.FILE_SIZE,
+   isFolder: this.IS_FOLDER,
+   totalChunks: this.TOTAL_CHUNKS,
+   chunksDownlaoded: this.TOTAL_CHUNKS - this.CHUNK_LEFT,
+   currentChunkPullingFrom: this.CHUNK_REQUESTED_FROM
+    ? this.CHUNK_REQUESTED_FROM
+    : 'None',
+   subFiles: [],
+  };
+
+  this.SUB_FILE_ID.forEach((subFile) => {
+   if (subFile.isDownloadStarted) {
+    const download = ACTIVE_DOWNLOADS[subFile.downloaderId!];
+    if (download instanceof Downloader) {
+     downloadObject.subFiles.push(download.getDownloadInfo());
+    }
+   }
+  });
+  return downloadObject;
+ };
+
+ public isSubFile = (): boolean => {
+  return this.IS_SUB_FILE;
+ };
 }

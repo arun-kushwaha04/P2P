@@ -149,16 +149,21 @@ const handleShareFilePrompt = async () => {
  return;
 };
 
-const startDownload = async () => {
- const answers = await inquirer.prompt([
-  {
-   name: 'fileHash',
-   type: 'input',
-   message: 'File/folder hash, you want to download\n',
-  },
- ]);
- const dowloaderId = uuidv4();
- ACTIVE_DOWNLOADS[dowloaderId] = new Downloader(answers.fileHash, dowloaderId);
+export const startDownload = async (fileHash?: string) => {
+ if (!fileHash) {
+  const answers = await inquirer.prompt([
+   {
+    name: 'fileHash',
+    type: 'input',
+    message: 'File/folder hash, you want to download\n',
+   },
+  ]);
+  const dowloaderId = uuidv4();
+  ACTIVE_DOWNLOADS[dowloaderId] = new Downloader(answers.fileHash, dowloaderId);
+ } else {
+  const dowloaderId = uuidv4();
+  ACTIVE_DOWNLOADS[dowloaderId] = new Downloader(fileHash, dowloaderId);
+ }
  return;
 };
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { ToastContainer } from 'react-toastify';
 
 import { Sidebar, Menu, MenuItem, useProSidebar } from 'react-pro-sidebar';
 import MenuOutlinedIcon from '@mui/icons-material/MenuOutlined';
@@ -22,31 +23,34 @@ function App() {
  }, []);
 
  return (
-  <div className='App' style={({ height: '100vh' }, { display: 'flex' })}>
-   <Sidebar style={{ height: '100vh', backgroundColor: '#b225ef' }}>
-    <Menu>
-     <MenuItem
-      icon={<MenuOutlinedIcon />}
-      onClick={() => {
-       collapseSidebar();
-      }}
-      style={{ textAlign: 'center' }}
-     >
-      {' '}
-      <h2>P2P</h2>
-     </MenuItem>
+  <>
+   <ToastContainer />
+   <div className='App' style={({ height: '100vh' }, { display: 'flex' })}>
+    <Sidebar style={{ height: '100vh', backgroundColor: '#b225ef' }}>
+     <Menu>
+      <MenuItem
+       icon={<MenuOutlinedIcon />}
+       onClick={() => {
+        collapseSidebar();
+       }}
+       style={{ textAlign: 'center' }}
+      >
+       {' '}
+       <h2>P2P</h2>
+      </MenuItem>
 
-     <MenuItem icon={<HomeOutlinedIcon />}>Home</MenuItem>
-     <MenuItem icon={<DownloadOutlinedIcon />}>Active Downloads</MenuItem>
-     <MenuItem icon={<PauseOutlinedIcon />}>Paused Downloads</MenuItem>
-     <MenuItem icon={<ShareOutlinedIcon />}>Shared Files</MenuItem>
-     <MenuItem icon={<ChatOutlinedIcon />}>Chat On LAN</MenuItem>
-    </Menu>
-   </Sidebar>
-   <MainSection>
-    <Search />
-   </MainSection>
-  </div>
+      <MenuItem icon={<HomeOutlinedIcon />}>Home</MenuItem>
+      <MenuItem icon={<DownloadOutlinedIcon />}>Active Downloads</MenuItem>
+      <MenuItem icon={<PauseOutlinedIcon />}>Paused Downloads</MenuItem>
+      <MenuItem icon={<ShareOutlinedIcon />}>Shared Files</MenuItem>
+      <MenuItem icon={<ChatOutlinedIcon />}>Chat On LAN</MenuItem>
+     </Menu>
+    </Sidebar>
+    <MainSection>
+     <Search />
+    </MainSection>
+   </div>
+  </>
  );
 }
 

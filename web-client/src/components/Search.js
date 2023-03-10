@@ -64,7 +64,10 @@ const columns = [
 ];
 
 const formatSearchResult = (serachResultUpdater, searchResult, setExpanded) => {
- if (!searchResult) return;
+ if (!searchResult) {
+  serachResultUpdater(null);
+  return;
+ }
  const result = [];
  const expanded = {};
  let i = 0;

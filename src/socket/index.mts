@@ -2,9 +2,15 @@ import express from 'express';
 import http from 'http';
 import { Server, Socket } from 'socket.io';
 import { SOCKET_SERVER_PORT } from '../utils/constant.mjs';
-import { BROADCAST_ADDR, UDP_SERVER } from '../server.mjs';
+import {
+ ACTIVE_DOWNLOADS,
+ BROADCAST_ADDR,
+ UDP_SERVER,
+ startDownload,
+} from '../server.mjs';
 
 import { namespace } from '../files/index.mjs';
+import { DownloadInfo, Downloader } from '../downloader/downloader.mjs';
 
 export class SocketServer {
  private io: Server;
@@ -39,6 +45,33 @@ export class SocketServer {
    //search a file event
    socket.on('search_file', ({ fileName }) => {
     UDP_SERVER.sendFileSearchQuery(fileName, BROADCAST_ADDR);
+   });
+
+   //start a file download
+   socket.on('start_download', ({ fileHash }) => {
+    startDownload(fileHash);
+    socket.emit('download_started');
+   });
+
+   //send current download updates
+   socket.on('get_active_downloads', () => {
+    const downloadInfo: DownloadInfo[] = [];
+    Object.keys(ACTIVE_DOWNLOADS).forEach((downloaderId) => {
+     if (ACTIVE_DOWNLOADS[downloaderId] instanceof Downloader) {
+      const download: Downloader = ACTIVE_DOWNLOADS[downloaderId] as Downloader;
+      if (!download.isSubFile()) {
+       downloadInfo.push(download.getDownloadInfo());
+      }
+     }
+    });
+    //sending active download info to web client
+    socket.emit('active_download_info', downloadInfo);
+   });
+
+   //disconnection of socket
+   socket.on('disconnect', () => {
+    this.socket = null;
+    console.log('Web client disconnected');
    });
   });
  };
