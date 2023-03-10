@@ -12,6 +12,8 @@ import styled from 'styled-components';
 import './App.css';
 import Search from './components/Search';
 import Socket from './utilities/socketConfig';
+import ActiveDownloads from './components/ActiveDownloads';
+import PausedDownloads from './components/PausedDownloads';
 
 function App() {
  const { collapseSidebar } = useProSidebar();
@@ -91,9 +93,9 @@ function App() {
      {navButtonSelected === 'home' ? (
       <Search />
      ) : navButtonSelected === 'active_downloads' ? (
-      <>active downloads</>
+      <ActiveDownloads />
      ) : navButtonSelected === 'paused_downloads' ? (
-      <>paused downloads</>
+      <PausedDownloads />
      ) : navButtonSelected === 'share_files' ? (
       <>share files</>
      ) : navButtonSelected === 'chat' ? (

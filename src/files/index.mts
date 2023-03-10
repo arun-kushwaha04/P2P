@@ -15,6 +15,7 @@ import {
 } from '../server.mjs';
 import { FILE_SEARCH_RESULT } from '../utils/constant.mjs';
 import pausedDownloadModel from './pausedDownloadModel.mjs';
+import { DownloadInfo } from '../downloader/downloader.mjs';
 
 // declare module namespace {
 //  interface typeInterface {
@@ -404,4 +405,35 @@ export class File {
    },
   );
  }
+
+ public getPausedDownloads = async () => {
+  const downloads = await pausedDownloadModel.find({});
+  const pausedDownloads: DownloadInfo[] = [];
+
+  downloads.forEach((download) => {
+   let tc = 0,
+    cd = 0;
+
+   download.chunkArray.forEach((chunk) => {
+    tc++;
+    if (chunk) cd++;
+   });
+
+   let temp: DownloadInfo = {
+    fileHash: download.fileHash!,
+    fileName: download.fileName!,
+    downloaderId: download.downloaderId!,
+    fileSize: parseInt(download.fileSize!),
+    isFolder: download.isFolder!,
+    subFiles: download.subFiles!,
+    totalChunks: tc,
+    chunksDownlaoded: cd,
+    currentChunkPullingFrom: null,
+   };
+
+   pausedDownloads.push(temp);
+  });
+
+  return pausedDownloads;
+ };
 }

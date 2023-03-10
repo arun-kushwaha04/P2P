@@ -17,3 +17,11 @@ export const searchForResource = (fileName, updateResult) => {
  });
  return;
 };
+
+export const startDownload = (fileHash) => {
+ socket.emit('start_download', { fileHash });
+
+ socket.on('download_started', () => {
+  notifyInfo('Download started', Date.now(), 1000);
+ });
+};

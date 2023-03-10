@@ -19,7 +19,7 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import { HeadingText } from '../utilities/SharedStyledComponents';
 import NoSearchResultGif from '../assets/no-result.gif';
 import { formatBytes } from '../utilities/utility';
-import { searchForResource } from '../utilities/search';
+import { searchForResource, startDownload } from '../utilities/search';
 
 const columns = [
  { id: 's.no', label: 'S.No', minWidth: 10 },
@@ -242,7 +242,9 @@ export default function Search() {
             {row.peerCount}
            </TableCell>
            <TableCell align='center'>
-            <Button onClick={() => console.log(row.fileHash)}>Download</Button>
+            <Button onClick={() => startDownload(row.fileHash)}>
+             Download
+            </Button>
            </TableCell>
           </TableRow>
          ))}

@@ -39,12 +39,14 @@ export interface Peer {
 }
 
 export interface DownloadInfo {
+ fileHash: string;
+ downloaderId: string;
  fileName: string;
  fileSize: number;
  isFolder: boolean;
  totalChunks: number;
  chunksDownlaoded: number;
- currentChunkPullingFrom: string;
+ currentChunkPullingFrom: string | null;
  subFiles: DownloadInfo[];
 }
 export class Downloader {
@@ -419,7 +421,7 @@ export class Downloader {
  }
 
  //pause download and save state to database
- protected async pauseDownloadAndSaveState(exit: boolean = false) {
+ public async pauseDownloadAndSaveState(exit: boolean = false) {
   await pausedDownloadModel.updateOne(
    { downloaderId: this.DOWNLOADER_ID },
    {
@@ -486,6 +488,8 @@ export class Downloader {
 
  public getDownloadInfo = (): DownloadInfo => {
   const downloadObject: DownloadInfo = {
+   fileHash: this.FILE_HASH,
+   downloaderId: this.DOWNLOADER_ID,
    fileName: this.FILE_NAMES[0],
    fileSize: this.FILE_SIZE,
    isFolder: this.IS_FOLDER,

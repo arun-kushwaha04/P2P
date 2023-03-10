@@ -5,6 +5,7 @@ import { SOCKET_SERVER_PORT } from '../utils/constant.mjs';
 import {
  ACTIVE_DOWNLOADS,
  BROADCAST_ADDR,
+ FILE_MANAGER,
  UDP_SERVER,
  startDownload,
 } from '../server.mjs';
@@ -50,6 +51,7 @@ export class SocketServer {
    //start a file download
    socket.on('start_download', ({ fileHash }) => {
     startDownload(fileHash);
+    console.log('Download started for filehash: ' + fileHash);
     socket.emit('download_started');
    });
 
@@ -66,6 +68,22 @@ export class SocketServer {
     });
     //sending active download info to web client
     socket.emit('active_download_info', downloadInfo);
+   });
+
+   //pausing a download
+   socket.on('pause_download', ({ downloaderId }) => {
+    if (ACTIVE_DOWNLOADS[downloaderId]) {
+     const downloader = ACTIVE_DOWNLOADS[downloaderId] as Downloader;
+     downloader.pauseDownloadAndSaveState(true);
+     socket.emit('download_paused');
+    }
+   });
+
+   //get paused downloads
+   socket.on('get_paused_download', () => {
+    const downloads = FILE_MANAGER.getPausedDownloads();
+    socket.emit('paused_download_info', downloads);
+    return;
    });
 
    //disconnection of socket
