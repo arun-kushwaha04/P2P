@@ -20,6 +20,7 @@ import { generateChunkHash, parseToJson, sendTCPPacket } from './tcputils.mjs';
 import chalk from 'chalk';
 import { ACTIVE_DOWNLOADS, FILE_MANAGER } from '../server.mjs';
 import { Downloader } from '../downloader/downloader.mjs';
+import { tcpPacket } from './tcp.mjs';
 
 export async function dataListenerServer(
  data: Buffer,
@@ -82,6 +83,8 @@ export async function closeListenerServer(
  getClientIPAddr: () => string,
  getTcpMessage: () => void,
  getClientName: () => void,
+ setClientName: (name: string) => void,
+ setClientIPAddr: (ipAddr: string) => void,
 ) {
  //data read and written by current socket
  let bread = socket.bytesRead;
@@ -96,7 +99,7 @@ export async function closeListenerServer(
  //TODO: handle type of message here
  if (getTcpMessage) {
   //handling the message
-  let message;
+  let message: tcpPacket;
   try {
    message = JSON.parse(getTcpMessage()!);
   } catch (error) {
@@ -105,7 +108,10 @@ export async function closeListenerServer(
    return;
   }
   // console.log(message);
-  const messageObj = message;
+  setClientIPAddr(message.clientIPAddr);
+  setClientName(message.clientUserName);
+  const messageObj = JSON.parse(message.payload?.data);
+
   if (messageObj.type === CHAT_MESSAGE) {
    console.log(
     chalk.bgMagenta('Message from client'),

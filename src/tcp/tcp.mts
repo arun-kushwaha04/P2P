@@ -127,10 +127,8 @@ export class TCPserver {
     //  setClientIPAddr,
     //  socket,
     // ),
-
     if (!tcpMessage) tcpMessage = data.toString();
     else tcpMessage += data;
-    console.log(data);
    });
 
    //will trigger when a error occurs on socket
@@ -163,6 +161,8 @@ export class TCPserver {
      getClientIPAddr,
      getTcpMessage,
      getClientName,
+     setClientName,
+     setClientIPAddr,
     );
    });
   });
@@ -240,19 +240,19 @@ export class TCPserver {
    });
    socket.on('data', async (data: string) => {
     //sending next chunk of data to socket server
-    dataListenerClient(
-     data,
-     socket,
-     message,
-     resolve,
-     reject,
-     setsIndex,
-     icnrTries,
-     seteIndex,
-     getTries,
-     getSIndex,
-     getEIndex,
-    );
+    // dataListenerClient(
+    //  data,
+    //  socket,
+    //  message,
+    //  resolve,
+    //  reject,
+    //  setsIndex,
+    //  icnrTries,
+    //  seteIndex,
+    //  getTries,
+    //  getSIndex,
+    //  getEIndex,
+    // );
    });
 
    //will trigger when buffer is empty
