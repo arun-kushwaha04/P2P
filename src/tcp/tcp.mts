@@ -3,10 +3,15 @@ import net, { Server, Socket as TCPSocket } from 'net';
 import chalk from 'chalk';
 import { v4 as uuidv4 } from 'uuid';
 
-import { MAX_TCP_CONNECTIONS, TCP_SERVER_PORT } from '../utils/constant.mjs';
+import {
+ MAX_TCP_CONNECTIONS,
+ TCP_MESSAGE,
+ TCP_SERVER_PORT,
+} from '../utils/constant.mjs';
 import { closeListenerServer, dataListenerServer } from './tcpserver.mjs';
 import { dataListenerClient, sendMessageChunk } from './tcpclient.mjs';
 import { UDP_SERVER, decsFileTransfers } from '../server.mjs';
+import { generateChunkHash, sendTCPPacket } from './tcputils.mjs';
 
 //TCP packet structure
 //sampleJsonObj = {
@@ -81,7 +86,7 @@ export class TCPserver {
   this.TCP_SERVER.on('connection', (socket: TCPSocket) => {
    //when a client connects connects to the tcp server, get a connection socket from we can listen for message and write message to the client
 
-   let tcpMessage: string | null = null;
+   let tcpMessage: string | null = '';
    let CLIENT_USER_NAME: string;
    let CLINET_IP_ADDR: string;
 
@@ -113,16 +118,20 @@ export class TCPserver {
    socket.setEncoding('utf-8');
 
    //will tigger when a socket receives data
-   socket.on('data', async (data) =>
-    dataListenerServer(
-     data,
-     getTcpMessage,
-     setTcpMessage,
-     setClientName,
-     setClientIPAddr,
-     socket,
-    ),
-   );
+   socket.on('data', async (data) => {
+    // dataListenerServer(
+    //  data,
+    //  getTcpMessage,
+    //  setTcpMessage,
+    //  setClientName,
+    //  setClientIPAddr,
+    //  socket,
+    // ),
+
+    if (!tcpMessage) tcpMessage = data.toString();
+    else tcpMessage += data;
+    console.log(data);
+   });
 
    //will trigger when a error occurs on socket
    socket.on('error', function (error) {
@@ -202,7 +211,7 @@ export class TCPserver {
    const socket: TCPSocket = net.connect(
     { port: TCP_SERVER_PORT, host: clientIP },
     () => {
-     sendMessageChunk(socket, message, sindex, icnrTries, seteIndex);
+     //  sendMessageChunk(socket, message, sindex, icnrTries, seteIndex);
     },
    );
    socket.setEncoding('utf-8');
@@ -221,6 +230,13 @@ export class TCPserver {
       remoteAddress: clientIP,
      });
     }
+    sendTCPPacket(
+     socket,
+     TCP_MESSAGE,
+     message,
+     'Chat message',
+     generateChunkHash(message),
+    );
    });
    socket.on('data', async (data: string) => {
     //sending next chunk of data to socket server
@@ -238,6 +254,12 @@ export class TCPserver {
      getEIndex,
     );
    });
+
+   //will trigger when buffer is empty
+   socket.on('drain', function () {
+    socket.resume();
+   });
+
    socket.on('error', () => {
     //TODO:
     // UDP_SERVER.send
