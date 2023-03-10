@@ -223,7 +223,7 @@ export class File {
   // newSearchQuery = '/' + newSearchQuery + '/';
   console.log('Searching file logs', newSearchQuery);
   const files = await FileModel.find({
-   fileName: { $regex: newSearchQuery, $options: 'si' },
+   fileName: { $regex: `'${newSearchQuery}'`, $options: 'si' },
   });
   console.log(files);
   if (files.length > 0) {
@@ -244,7 +244,7 @@ export class File {
     if (file.isFolder) {
      const parentPathLength = file.filePath!.split('/').length;
      const subFiles = await FileModel.find({
-      filePath: { $regex: file.filePath, $options: 'i' },
+      filePath: { $regex: `'${file.filePath}'`, $options: 'i' },
      });
 
      subFiles.forEach((subFile) => {
