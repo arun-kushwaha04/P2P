@@ -219,13 +219,9 @@ export class File {
  }
 
  public async searchFile(searchQuery: string, clientIpAddr: string) {
-  let newSearchQuery = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  // newSearchQuery = '/' + newSearchQuery + '/';
-  console.log('Searching file logs', newSearchQuery);
   const files = await FileModel.find({
-   fileName: { $regex: `'${newSearchQuery}'`, $options: 'si' },
+   fileName: new RegExp(searchQuery, 'i'),
   });
-  console.log(files);
   if (files.length > 0) {
    const searchResult: any = { searchQuery };
    let temp: any[] = [];
@@ -244,7 +240,7 @@ export class File {
     if (file.isFolder) {
      const parentPathLength = file.filePath!.split('/').length;
      const subFiles = await FileModel.find({
-      filePath: { $regex: `'${file.filePath}'`, $options: 'i' },
+      filePath: new RegExp(file.filePath!, 'i'),
      });
 
      subFiles.forEach((subFile) => {
