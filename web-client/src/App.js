@@ -15,10 +15,14 @@ import Socket from './utilities/socketConfig';
 import ActiveDownloads from './components/ActiveDownloads';
 import PausedDownloads from './components/PausedDownloads';
 import ShareResources from './components/ShareResources';
+import Chat from './components/Chat';
+import { notifyInfo } from './utilities/ToastNotification';
 
 function App() {
  const { collapseSidebar } = useProSidebar();
  const [navButtonSelected, setSelectedNavButton] = React.useState('home');
+ const [chatMessages, setChatMessages] = React.useState({});
+ const handledMessage = {};
 
  const navButtonClickHandler = (navId) => {
   setSelectedNavButton(navId);
@@ -27,6 +31,26 @@ function App() {
  React.useEffect(() => {
   Socket.on('connection_succeed', () => {
    console.log('Connection established with server');
+   Socket.on('chat_message', ({ message, sender, id }) => {
+    notifyInfo('New Chat Message', 1000);
+    if (handledMessage[id]) return;
+    handledMessage[id] = true;
+    setChatMessages((oldVal) => {
+     if (oldVal[sender])
+      return {
+       ...oldVal,
+       [sender]: [
+        ...oldVal[sender],
+        { message, sended: false, date: Date.now() },
+       ],
+      };
+     else
+      return {
+       ...oldVal,
+       [sender]: [{ message, sended: false, date: Date.now() }],
+      };
+    });
+   });
   });
  }, []);
 
@@ -100,7 +124,7 @@ function App() {
      ) : navButtonSelected === 'share_files' ? (
       <ShareResources />
      ) : navButtonSelected === 'chat' ? (
-      <>chat</>
+      <Chat setChatMessages={setChatMessages} chatMessages={chatMessages} />
      ) : (
       <>No such page exists</>
      )}

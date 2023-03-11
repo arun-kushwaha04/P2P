@@ -10,7 +10,7 @@ import {
 } from '../utils/constant.mjs';
 import { closeListenerServer, dataListenerServer } from './tcpserver.mjs';
 import { dataListenerClient, sendMessageChunk } from './tcpclient.mjs';
-import { UDP_SERVER, decsFileTransfers } from '../server.mjs';
+import { SOKCET_SERVER, UDP_SERVER, decsFileTransfers } from '../server.mjs';
 import { generateChunkHash, sendTCPPacket } from './tcputils.mjs';
 
 //TCP packet structure

@@ -1,11 +1,12 @@
 import express from 'express';
 import http from 'http';
 import { Server, Socket } from 'socket.io';
-import { SOCKET_SERVER_PORT } from '../utils/constant.mjs';
+import { CHAT_MESSAGE, SOCKET_SERVER_PORT } from '../utils/constant.mjs';
 import {
  ACTIVE_DOWNLOADS,
  BROADCAST_ADDR,
  FILE_MANAGER,
+ TCP_SERVER,
  UDP_SERVER,
  startDownload,
 } from '../server.mjs';
@@ -16,7 +17,7 @@ import fileModel from '../files/fileModel.mjs';
 
 export class SocketServer {
  private io: Server;
- private socket: Socket | null = null;
+ public socket: Socket | null = null;
  constructor() {
   const app = express();
   const server = http.createServer(app);
@@ -103,6 +104,21 @@ export class SocketServer {
     console.log('Getting Shared Resources');
     const sharedResources = await fileModel.findOneAndDelete({ _id: id });
     socket.emit('resource_unshared', sharedResources);
+   });
+
+   //emit active users
+   socket.on('get_active_users', () => {
+    console.log('Getting active users');
+    socket.emit('active_users', {
+     activeUsers: Object.fromEntries(UDP_SERVER.ACTIVE_USERS),
+    });
+   });
+
+   //send chat message
+   socket.on('send_chat_message', ({ message, receiver }) => {
+    console.log('Send Chat Message');
+    TCP_SERVER.sendMessage(message, receiver, CHAT_MESSAGE);
+    socket.emit('message_sent');
    });
 
    //disconnection of socket

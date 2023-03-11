@@ -61,7 +61,7 @@ export default function ShareResources() {
    <SharedDiv>
     {sharedResources &&
      sharedResources.map((resource) => (
-      <Row>
+      <Row key={resource._id}>
        <div>
         <p>{resource.filePath}</p>
        </div>

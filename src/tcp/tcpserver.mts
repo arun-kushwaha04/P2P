@@ -2,8 +2,7 @@
 
 import { Socket } from 'net';
 import { Worker } from 'worker_threads';
-import fs from 'fs';
-import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 import {
  TCP_MESSAGE,
  TCP_MESSAGE_LAST,
@@ -18,7 +17,7 @@ import {
 } from '../utils/constant.mjs';
 import { generateChunkHash, parseToJson, sendTCPPacket } from './tcputils.mjs';
 import chalk from 'chalk';
-import { ACTIVE_DOWNLOADS, FILE_MANAGER } from '../server.mjs';
+import { ACTIVE_DOWNLOADS, FILE_MANAGER, SOKCET_SERVER } from '../server.mjs';
 import { Downloader } from '../downloader/downloader.mjs';
 import { tcpPacket } from './tcp.mjs';
 
@@ -118,6 +117,15 @@ export async function closeListenerServer(
     chalk.yellow(getClientName()),
    );
    console.log(messageObj.message);
+   let handleOnce = false;
+   if (SOKCET_SERVER.socket && !handleOnce) {
+    handleOnce = true;
+    SOKCET_SERVER.socket.volatile.emit('chat_message', {
+     message: messageObj.message,
+     sender: getClientIPAddr(),
+     id: uuidv4(),
+    });
+   }
   } else if (messageObj.type === FILE_SEARCH_RESULT) {
    console.log(
     chalk.bgMagenta('File search result from client'),
