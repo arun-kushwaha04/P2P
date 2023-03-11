@@ -166,7 +166,8 @@ export class SocketServer {
 
    //search peer by filehash
    socket.on('search_peer_filehash', async ({ fileHash }) => {
-    UDP_SERVER.sendFileSearchHash(fileHash, 'socket', UDP_SERVER.MY_IP_ADDRESS);
+    console.log('Searching peer for file hash: ' + fileHash);
+    UDP_SERVER.sendFileSearchHash(fileHash, 'socket', BROADCAST_ADDR);
     const file = await fileModel.findOne({ fileHash: fileHash });
     if (file) {
      socket.emit('peer_filehash', {

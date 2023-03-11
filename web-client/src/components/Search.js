@@ -61,6 +61,12 @@ const columns = [
   minWidth: 20,
   align: 'center',
  },
+ {
+  id: 'stream',
+  label: 'Stream',
+  minWidth: 20,
+  align: 'center',
+ },
 ];
 
 const formatSearchResult = (serachResultUpdater, searchResult, setExpanded) => {
@@ -245,6 +251,19 @@ export default function Search() {
             <Button onClick={() => startDownload(row.fileHash)}>
              Download
             </Button>
+           </TableCell>
+           <TableCell align='center'>
+            {row.files[0].includes('.mp4') && (
+             <Button>
+              <a
+               target='_blank'
+               href={`/stream/${row.fileHash}`}
+               rel='noreferrer'
+              >
+               Stream
+              </a>
+             </Button>
+            )}
            </TableCell>
           </TableRow>
          ))}
