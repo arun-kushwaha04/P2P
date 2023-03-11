@@ -11,6 +11,12 @@ export const getSharedResources = (
   updateSharedResources(sharedResources);
  });
 };
+export const sharedResource = (filePath) => {
+ socket.emit('share_resource', { filePath });
+ socket.on('resource_shared', () => {
+  notifyInfo('Resource shared', 1000);
+ });
+};
 
 export const unshareResources = (id, updateSharedResources) => {
  socket.emit('unshare_resources', { id });

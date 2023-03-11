@@ -99,6 +99,12 @@ export class SocketServer {
     socket.emit('shared_resources', sharedResources);
    });
 
+   //share resources
+   socket.on('share_resource', async ({ filePath }) => {
+    await FILE_MANAGER.shareFile(filePath);
+    socket.emit('resource_shared');
+   });
+
    //unshare resources
    socket.on('unshare_resources', async ({ id }) => {
     console.log('Getting Shared Resources');

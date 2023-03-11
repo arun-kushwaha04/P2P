@@ -5,6 +5,7 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import { Button } from '@mui/material';
 import {
  getSharedResources,
+ sharedResource,
  unshareResources,
 } from '../utilities/shareResources';
 
@@ -42,7 +43,11 @@ export default function ShareResources() {
      placeholder='Enter resource path'
      onChange={(e) => setFileLocation(e.target.value)}
     />
-    <Button size='small' variant='contained'>
+    <Button
+     size='small'
+     variant='contained'
+     onClick={() => sharedResource(fileLocation)}
+    >
      Share
     </Button>
    </FormControl>
