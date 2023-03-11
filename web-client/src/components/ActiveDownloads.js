@@ -9,7 +9,7 @@ import Paper from '@mui/material/Paper';
 import styled from 'styled-components';
 
 import { getActiveDownloads } from '../utilities/activeDownloads';
-import { formatBytes } from '../utilities/utility';
+import { formatBytes, formatTime } from '../utilities/utility';
 import { Button } from '@mui/material';
 import NoActiveDownloadGIF from '../assets/no_active_downloads.gif';
 import { HeadingText } from '../utilities/SharedStyledComponents';
@@ -44,6 +44,12 @@ const columns = [
  {
   id: 'peer',
   label: 'Chunk Receving From',
+  minWidth: 10,
+  align: 'center',
+ },
+ {
+  id: 'time_elapsed',
+  label: 'Time Elapsed',
   minWidth: 10,
   align: 'center',
  },
@@ -122,6 +128,9 @@ export default function ActiveDownloads() {
           {row.chunksDownlaoded}/{row.totalChunks}
          </TableCell>
          <TableCell align='center'>{row.currentChunkPullingFrom}</TableCell>
+         <TableCell align='center'>
+          {formatTime(Date.now() - row.startTime)}
+         </TableCell>
          <TableCell align='center'>
           <Button onClick={() => console.log(row.fileHash)}>
            Pause Download

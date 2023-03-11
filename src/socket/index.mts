@@ -12,6 +12,7 @@ import {
 
 import { namespace } from '../files/index.mjs';
 import { DownloadInfo, Downloader } from '../downloader/downloader.mjs';
+import fileModel from '../files/fileModel.mjs';
 
 export class SocketServer {
  private io: Server;
@@ -85,6 +86,23 @@ export class SocketServer {
     const downloads = await FILE_MANAGER.getPausedDownloads();
     socket.emit('paused_download_info', downloads);
     return;
+   });
+
+   //get shared resources
+   socket.on('get_shared_resources', async ({ limit, pageNumber }) => {
+    console.log('Getting Shared Resources');
+    const sharedResources = await fileModel
+     .find()
+     .limit(limit)
+     .skip(pageNumber * limit);
+    socket.emit('shared_resources', sharedResources);
+   });
+
+   //unshare resources
+   socket.on('unshare_resources', async ({ id }) => {
+    console.log('Getting Shared Resources');
+    const sharedResources = await fileModel.findOneAndDelete({ _id: id });
+    socket.emit('resource_unshared', sharedResources);
    });
 
    //disconnection of socket

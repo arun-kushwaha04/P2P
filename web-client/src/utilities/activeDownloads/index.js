@@ -1,5 +1,5 @@
 import socket from '../socketConfig';
-import { notifyError, notifyInfo } from '../ToastNotification';
+// import { notifyError, notifyInfo } from '../ToastNotification';
 
 export const getActiveDownloads = (updateActiveDownloads) => {
  socket.emit('get_active_downloads');

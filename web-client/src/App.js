@@ -14,6 +14,7 @@ import Search from './components/Search';
 import Socket from './utilities/socketConfig';
 import ActiveDownloads from './components/ActiveDownloads';
 import PausedDownloads from './components/PausedDownloads';
+import ShareResources from './components/ShareResources';
 
 function App() {
  const { collapseSidebar } = useProSidebar();
@@ -97,7 +98,7 @@ function App() {
      ) : navButtonSelected === 'paused_downloads' ? (
       <PausedDownloads />
      ) : navButtonSelected === 'share_files' ? (
-      <>share files</>
+      <ShareResources />
      ) : navButtonSelected === 'chat' ? (
       <>chat</>
      ) : (
