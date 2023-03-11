@@ -12,7 +12,12 @@ export const sendTCPPacket = (
  message: string,
  hash: string | null = null,
 ): boolean => {
- return socket.write(genreateTcpPktToStr(pktType, buffer, message, hash));
+ return socket.write(
+  genreateTcpPktToStr(pktType, buffer, message, hash),
+  () => {
+   socket.end();
+  },
+ );
 };
 const genreateTcpPktToStr = (
  pktType: number,

@@ -253,6 +253,7 @@ export async function resumeFileDownload(downloaderId: string) {
    subFileIds: fileData.subFileIds,
   },
  );
+ if (SOKCET_SERVER.socket) SOKCET_SERVER.socket.emit('download_resumed');
 }
 
 if (!fs.existsSync(DOWNLOAD_FOLDER)) {

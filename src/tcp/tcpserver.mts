@@ -2,8 +2,7 @@
 
 import { Socket } from 'net';
 import { Worker } from 'worker_threads';
-import fs from 'fs';
-import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 import {
  TCP_MESSAGE,
  TCP_MESSAGE_LAST,
@@ -18,8 +17,9 @@ import {
 } from '../utils/constant.mjs';
 import { generateChunkHash, parseToJson, sendTCPPacket } from './tcputils.mjs';
 import chalk from 'chalk';
-import { ACTIVE_DOWNLOADS, FILE_MANAGER } from '../server.mjs';
+import { ACTIVE_DOWNLOADS, FILE_MANAGER, SOKCET_SERVER } from '../server.mjs';
 import { Downloader } from '../downloader/downloader.mjs';
+import { tcpPacket } from './tcp.mjs';
 
 export async function dataListenerServer(
  data: Buffer,
@@ -82,6 +82,8 @@ export async function closeListenerServer(
  getClientIPAddr: () => string,
  getTcpMessage: () => void,
  getClientName: () => void,
+ setClientName: (name: string) => void,
+ setClientIPAddr: (ipAddr: string) => void,
 ) {
  //data read and written by current socket
  let bread = socket.bytesRead;
@@ -96,7 +98,7 @@ export async function closeListenerServer(
  //TODO: handle type of message here
  if (getTcpMessage) {
   //handling the message
-  let message;
+  let message: tcpPacket;
   try {
    message = JSON.parse(getTcpMessage()!);
   } catch (error) {
@@ -105,13 +107,25 @@ export async function closeListenerServer(
    return;
   }
   // console.log(message);
-  const messageObj = message;
+  setClientIPAddr(message.clientIPAddr);
+  setClientName(message.clientUserName);
+  const messageObj = JSON.parse(message.payload?.data);
+
   if (messageObj.type === CHAT_MESSAGE) {
    console.log(
     chalk.bgMagenta('Message from client'),
     chalk.yellow(getClientName()),
    );
    console.log(messageObj.message);
+   let handleOnce = false;
+   if (SOKCET_SERVER.socket && !handleOnce) {
+    handleOnce = true;
+    SOKCET_SERVER.socket.volatile.emit('chat_message', {
+     message: messageObj.message,
+     sender: getClientIPAddr(),
+     id: uuidv4(),
+    });
+   }
   } else if (messageObj.type === FILE_SEARCH_RESULT) {
    console.log(
     chalk.bgMagenta('File search result from client'),

@@ -48,6 +48,7 @@ export interface DownloadInfo {
  chunksDownlaoded: number;
  currentChunkPullingFrom: string | null;
  subFiles: DownloadInfo[];
+ startTime?: number;
 }
 export class Downloader {
  protected FILE_HASH: string;
@@ -65,6 +66,7 @@ export class Downloader {
  protected DOWNLOADER_ID: string;
  protected TIMER: NodeJS.Timer | null = null;
  protected CHUNK_REQUESTED_FROM: string | null = null;
+ protected START_TIME: number = Date.now();
  protected SUB_FILE_ID: {
   downloaderId: string | null;
   isDownloadStarted: boolean;
@@ -125,10 +127,12 @@ export class Downloader {
     this.SUB_FILE_ID.push({ downloaderId: null, isDownloadStarted: false });
    });
   }
+  this.START_TIME = Date.now();
   this.TOTAL_CHUNKS = Math.ceil(this.FILE_SIZE / CHUNK_TRANSFERED);
   this.DOWNLOADER_ID = downloaderId;
   this.CHUNK_ARRAY = chunkArray ? chunkArray : new Array(this.TOTAL_CHUNKS);
   this.CHUNK_REQUESTED_ARRAY = new Array(this.TOTAL_CHUNKS);
+
   for (let i = 0; i < this.TOTAL_CHUNKS; i++) {
    if (!chunkArray) {
     this.CHUNK_ARRAY[i] = false;
@@ -138,6 +142,11 @@ export class Downloader {
   }
 
   if (this.IS_FOLDER) {
+   this.TOTAL_CHUNKS = 0;
+   this.SUB_FILES.forEach((file) => {
+    this.TOTAL_CHUNKS += Math.ceil(parseInt(file.fileSize) / CHUNK_TRANSFERED);
+   });
+
    this.folderDownload();
   } else {
    this.startDownload();
@@ -441,7 +450,7 @@ export class Downloader {
    },
   );
   // await downloadState.save();
-  if (exit) this.destructor;
+  if (exit) this.destructor();
   return;
  }
 
@@ -499,6 +508,7 @@ export class Downloader {
     ? this.CHUNK_REQUESTED_FROM
     : 'None',
    subFiles: [],
+   startTime: this.START_TIME,
   };
 
   this.SUB_FILE_ID.forEach((subFile) => {
