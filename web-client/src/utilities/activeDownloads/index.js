@@ -6,5 +6,12 @@ export const getActiveDownloads = (updateActiveDownloads) => {
 
  socket.on('active_download_info', (acitveDownloads) => {
   updateActiveDownloads(acitveDownloads);
+  return;
  });
+ return;
+};
+
+export const pauseDownload = (downloaderId) => {
+ socket.emit('pause_download', { downloaderId });
+ return;
 };

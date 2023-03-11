@@ -9,13 +9,17 @@ export const getSharedResources = (
  socket.emit('get_shared_resources', { pageNumber, limit });
  socket.on('shared_resources', (sharedResources) => {
   updateSharedResources(sharedResources);
+  return;
  });
+ return;
 };
 export const sharedResource = (filePath) => {
  socket.emit('share_resource', { filePath });
  socket.on('resource_shared', () => {
   notifyInfo('Resource shared', 1000);
+  return;
  });
+ return;
 };
 
 export const unshareResources = (id, updateSharedResources) => {
@@ -26,5 +30,7 @@ export const unshareResources = (id, updateSharedResources) => {
    const temp = oldVal.filter((res) => res._id !== id);
    return temp;
   });
+  return;
  });
+ return;
 };

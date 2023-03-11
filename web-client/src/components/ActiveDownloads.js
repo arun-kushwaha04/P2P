@@ -8,7 +8,10 @@ import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import styled from 'styled-components';
 
-import { getActiveDownloads } from '../utilities/activeDownloads';
+import {
+ getActiveDownloads,
+ pauseDownload,
+} from '../utilities/activeDownloads';
 import { formatBytes, formatTime } from '../utilities/utility';
 import { Button } from '@mui/material';
 import NoActiveDownloadGIF from '../assets/no_active_downloads.gif';
@@ -132,7 +135,7 @@ export default function ActiveDownloads() {
           {formatTime(Date.now() - row.startTime)}
          </TableCell>
          <TableCell align='center'>
-          <Button onClick={() => console.log(row.fileHash)}>
+          <Button onClick={() => pauseDownload(row.downloaderId)}>
            Pause Download
           </Button>
          </TableCell>

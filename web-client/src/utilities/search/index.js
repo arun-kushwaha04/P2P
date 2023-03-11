@@ -23,5 +23,7 @@ export const startDownload = (fileHash) => {
 
  socket.on('download_started', () => {
   notifyInfo('Download started', Date.now(), 1000);
+  return;
  });
+ return;
 };

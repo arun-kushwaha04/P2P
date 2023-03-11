@@ -18,5 +18,7 @@ export const getPeerByFileHash = (updatePeer, setVideoUrl, fileHashr) => {
     return temp;
    });
   }
+  return;
  });
+ return;
 };

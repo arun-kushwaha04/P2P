@@ -8,6 +8,7 @@ import {
  FILE_MANAGER,
  TCP_SERVER,
  UDP_SERVER,
+ resumeFileDownload,
  startDownload,
 } from '../server.mjs';
 
@@ -111,11 +112,18 @@ export class SocketServer {
 
    //pausing a download
    socket.on('pause_download', ({ downloaderId }) => {
+    console.log('Pausing Download', downloaderId);
     if (ACTIVE_DOWNLOADS[downloaderId]) {
      const downloader = ACTIVE_DOWNLOADS[downloaderId] as Downloader;
      downloader.pauseDownloadAndSaveState(true);
      socket.emit('download_paused');
     }
+   });
+
+   //resuming a download
+   socket.on('resume_download', ({ downloaderId }) => {
+    console.log('Resuming Download', downloaderId);
+    resumeFileDownload(downloaderId);
    });
 
    //get paused downloads

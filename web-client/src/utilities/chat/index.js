@@ -7,7 +7,9 @@ export const getUserList = (updateUserList) => {
  socket.on('active_users', ({ activeUsers }) => {
   console.log(activeUsers);
   updateUserList(activeUsers);
+  return;
  });
+ return;
 };
 
 export const sendChatMessage = (setChatMessages, message, receiver) => {
@@ -31,5 +33,7 @@ export const sendChatMessage = (setChatMessages, message, receiver) => {
      [receiver]: [{ message, sended: true }],
     };
   });
+  return;
  });
+ return;
 };

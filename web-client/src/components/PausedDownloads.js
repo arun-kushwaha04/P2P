@@ -12,7 +12,10 @@ import { formatBytes } from '../utilities/utility';
 import { Button } from '@mui/material';
 import NoActiveDownloadGIF from '../assets/no_active_downloads.gif';
 import { HeadingText } from '../utilities/SharedStyledComponents';
-import { getPausedDownloads } from '../utilities/pausedDownloads';
+import {
+ getPausedDownloads,
+ resumeDownload,
+} from '../utilities/pausedDownloads';
 
 const columns = [
  { id: 's.no', label: 'S.No', minWidth: 10 },
@@ -108,7 +111,7 @@ export default function PausedDownloads() {
           {row.chunksDownlaoded}/{row.totalChunks}
          </TableCell>
          <TableCell align='center'>
-          <Button onClick={() => console.log(row.fileHash)}>
+          <Button onClick={() => resumeDownload(row.downloaderId)}>
            Resume Download
           </Button>
          </TableCell>

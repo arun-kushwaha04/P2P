@@ -450,7 +450,7 @@ export class Downloader {
    },
   );
   // await downloadState.save();
-  if (exit) this.destructor;
+  if (exit) this.destructor();
   return;
  }
 
