@@ -14,6 +14,7 @@ import {
 import { namespace } from '../files/index.mjs';
 import { DownloadInfo, Downloader } from '../downloader/downloader.mjs';
 import fileModel from '../files/fileModel.mjs';
+import fs from 'fs';
 
 export class SocketServer {
  private io: Server;
@@ -30,6 +31,42 @@ export class SocketServer {
 
   app.get('/', (req, res) => {
    res.send(`Server running on ${SOCKET_SERVER_PORT}`);
+  });
+
+  app.get('/stream/:hashId', async (req, res) => {
+   const fileInfo = await fileModel.findOne({ fileHash: req.params.hashId });
+
+   if (!fileInfo) {
+    res.status(404).json({ message: 'Bad Request' });
+   }
+
+   const videoPath = fileInfo?.filePath!;
+   const videoSize = parseInt(fileInfo?.fileSize!);
+   const videoFileType = fileInfo?.fileMimeType;
+
+   if (!videoFileType!.includes('video')) {
+    if (!fileInfo) {
+     res.status(404).json({ message: 'Can only stream video files' });
+    }
+   }
+
+   const range = req.headers.range;
+   const chunkSize = 1024 * 1024 * 5; //5mb
+   const start = Number(range?.replace(/\D/g, ''));
+   const end = Math.min(start + chunkSize, videoSize - 1);
+
+   const contentLength = end - start + 1;
+
+   const headers = {
+    'Content-Range': `bytes ${start}-${end}/${videoSize}`,
+    'Accept-Ranges': 'bytes',
+    'Content-Length': contentLength,
+    'Content-Type': videoFileType,
+   };
+   res.writeHead(206, headers);
+
+   const stream = fs.createReadStream(videoPath, { start, end });
+   stream.pipe(res);
   });
 
   this.intializeSocket();
@@ -125,6 +162,18 @@ export class SocketServer {
     console.log('Send Chat Message');
     TCP_SERVER.sendMessage(message, receiver, CHAT_MESSAGE);
     socket.emit('message_sent');
+   });
+
+   //search peer by filehash
+   socket.on('search_peer_filehash', async ({ fileHash }) => {
+    UDP_SERVER.sendFileSearchHash(fileHash, 'socket', UDP_SERVER.MY_IP_ADDRESS);
+    const file = await fileModel.findOne({ fileHash: fileHash });
+    if (file) {
+     socket.emit('peer_filehash', {
+      peerIpAddr: UDP_SERVER.MY_IP_ADDRESS,
+      fileHash: fileHash,
+     });
+    }
    });
 
    //disconnection of socket

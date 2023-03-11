@@ -18,11 +18,11 @@ import ShareResources from './components/ShareResources';
 import Chat from './components/Chat';
 import { notifyInfo } from './utilities/ToastNotification';
 
+const handledMessage = {};
 function App() {
  const { collapseSidebar } = useProSidebar();
  const [navButtonSelected, setSelectedNavButton] = React.useState('home');
  const [chatMessages, setChatMessages] = React.useState({});
- const handledMessage = {};
 
  const navButtonClickHandler = (navId) => {
   setSelectedNavButton(navId);
@@ -52,7 +52,7 @@ function App() {
     });
    });
   });
- }, []);
+ }, [handledMessage]);
 
  return (
   <>

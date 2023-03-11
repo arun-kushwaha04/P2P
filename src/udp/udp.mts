@@ -21,6 +21,7 @@ import {
  ACTIVE_DOWNLOADS,
  FILE_MANAGER,
  FILE_TRANSFERS,
+ SOKCET_SERVER,
  TCP_SERVER,
  UDP_SERVER,
  incrFileTransfers,
@@ -197,6 +198,7 @@ export class UDPSever {
      await FILE_MANAGER.searchByHash(packetObjRecevied.payload?.data.fileHash)
     ) {
      this.sendFileSearchResponse(
+      packetObjRecevied.payload?.data.fileHash,
       packetObjRecevied.payload?.data.downloaderId,
       packetObjRecevied.ipInfo.senderIpAddr,
      );
@@ -208,7 +210,17 @@ export class UDPSever {
      chalk.green(packetObjRecevied.clientUserName),
      chalk.magenta(packetObjRecevied.payload?.data),
     );
-    ACTIVE_DOWNLOADS[packetObjRecevied.payload?.data].updatePeerList(
+    if (packetObjRecevied.payload?.data.downloaderId === 'socket') {
+     if (SOKCET_SERVER.socket)
+      SOKCET_SERVER.socket.emit('peer_filehash', {
+       peerIpAddr: packetObjRecevied.ipInfo.senderIpAddr,
+       fileHash: packetObjRecevied.payload?.data.fileHash,
+      });
+     return;
+    }
+    ACTIVE_DOWNLOADS[
+     packetObjRecevied.payload?.data.downloaderId
+    ].updatePeerList(
      packetObjRecevied.ipInfo.senderIpAddr,
      packetObjRecevied.load,
     );
@@ -401,6 +413,7 @@ export class UDPSever {
  };
 
  public sendFileSearchResponse = (
+  fileHash: string,
   downloaderId: string,
   peerIPAddr: string,
  ): void => {
@@ -411,7 +424,7 @@ export class UDPSever {
    currTime: new Date(),
    load: Math.round((FILE_TRANSFERS / MAX_FILE_TRANSFERS) * 100) / 100,
    payload: {
-    data: downloaderId,
+    data: { downloaderId, fileHash },
     message: 'Please search for this file',
    },
    ipInfo: {
