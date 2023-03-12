@@ -55,6 +55,7 @@ Starting node:
     - Fork the repository.
     - Clone the repository (git clone https://github.com/arun-kushwaha04/P2P.git).
     - Open the folder in which you cloned the repository.
+    - Run mongodb as a docker container(important). You can use this command `docker run -d -p 12707:12707 mongo --name=mongod`
     - Run *npm install*.
     - Find your networks broadcast address using ifconfig(mac/linux) or ipconfig.    
     - Now you can run 'npm start {provide_a_desired_username_here}'.    
