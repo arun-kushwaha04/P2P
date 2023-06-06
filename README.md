@@ -4,6 +4,10 @@
 
 P2P helps you to share and stream resources over LAN, where each acts as a independent node. There is no dependency on a central server, each peer have their own local database which help them to act independant.
 
+## Video explanation
+
+[![Watch the video]()](https://drive.google.com/file/d/1Ad9IQbqjsfjzD_60PkAUCSS9tjIaxBjf/preview)
+
 ## Features Implemented
 1. Triggring events when a peer leave/joins the network:
     - Uses nodejs dgram libaray to broadcast UDP packet when a peer joins/leaves the network.
