@@ -25,6 +25,8 @@ const rStream = fs.createReadStream(workerData.filePath, {
 });
 //writing the data from read stream to a file instead of storing in memory
 const writeFilePath = `~/P2P Temp/${Date()}`;
+let n = fs.openSync(writeFilePath, 'a')
+fs.closeSync(n)
 const wStream = fs.createWriteStream(writeFilePath, { flags: 'a' });
 
 rStream.on('data', function (chunk) {

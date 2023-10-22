@@ -521,6 +521,7 @@ export class UDPSever {
     },
    });
    worker.on('message', (data) => {
+    console.log('New message from file chunk worker', data);
     if (data.type == 'chunk size') console.log(data.indexs);
     else resolve(data.filePath);
     // else resolve(data.val);
