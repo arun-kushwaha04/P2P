@@ -21,7 +21,7 @@ export const DOWNLOAD_FOLDER: string = path.normalize(
  `${os.homedir()}/Downloads/P2P/downloads`,
 );
 export const LOGS: string = path.normalize(`${os.homedir()}/P2P/logs`);
-
+export const TEMP_FOLDER = path.normalize(`${os.homedir()}/P2P/src/temp`);
 //udp packets constants
 export const UDP_PING: number = 1;
 export const UDP_PONG: number = 2;

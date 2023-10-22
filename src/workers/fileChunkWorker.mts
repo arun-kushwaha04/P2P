@@ -1,6 +1,6 @@
 import { parentPort, workerData } from 'worker_threads';
 import fs from 'fs';
-import { CHUNK_TRANSFERED } from '../utils/constant.mjs';
+import { CHUNK_TRANSFERED, TEMP_FOLDER } from '../utils/constant.mjs';
 import path from 'path';
 import { FILE_MANAGER } from '../server.mjs';
 
@@ -26,7 +26,7 @@ const rStream = fs.createReadStream(workerData.filePath, {
  encoding: 'binary',
 });
 //writing the data from read stream to a file instead of storing in memory
-const writeFilePath = `./temp/${Date()}`;
+const writeFilePath = `${TEMP_FOLDER}/${Date.now()}`;
 const wStream = fs.createWriteStream(writeFilePath, { flags: 'a' });
 
 rStream.on('data', function (chunk) {
