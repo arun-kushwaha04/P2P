@@ -492,10 +492,10 @@ export class UDPSever {
   fileName: string,
   downloaderId: string,
  ) {
-  const fileBuffer: string = await this.getFileChunk(fileHash, chunckNumber);
+  const filePath: string = await this.getFileChunk(fileHash, chunckNumber);
   // console.log('File buffer created', fileBuffer);
   TCP_SERVER.sendMessage(
-   { chunckNumber, fileBuffer, fileName, downloaderId },
+   { chunckNumber, filePath, fileName, downloaderId },
    clientIpAddr,
    FILE_CHUNK,
    true,
@@ -510,7 +510,7 @@ export class UDPSever {
     fileHash,
    );
    if (!filePath) {
-    console.log(chalk.red('Invalid file chucnk requested'));
+    console.log(chalk.red('Invalid file chunk requested'));
     reject();
    }
    const worker = new Worker('./dist/workers/fileChunkWorker.mjs', {
@@ -522,7 +522,8 @@ export class UDPSever {
    });
    worker.on('message', (data) => {
     if (data.type == 'chunk size') console.log(data.indexs);
-    else resolve(data.val);
+    else resolve(data.filePath);
+    // else resolve(data.val);
    });
    worker.on('error', (msg) => {
     console.log(msg);

@@ -199,7 +199,7 @@ export class File {
   );
  }
 
- private async generateHash(filePath: string, fileSize: number) {
+ async generateHash(filePath: string, fileSize: number = 0) {
   //creating a worker thread for hashing calulatoins
   return new Promise<string>(async (resolve, reject) => {
    const worker = new Worker('./dist/workers/fileHash.mjs', {

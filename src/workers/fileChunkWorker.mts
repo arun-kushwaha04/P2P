@@ -2,7 +2,7 @@ import { parentPort, workerData } from 'worker_threads';
 import fs from 'fs';
 import { CHUNK_TRANSFERED } from '../utils/constant.mjs';
 
-let fileChunk = '';
+// let fileChunk = '';
 const startByte = workerData.chunckNumber * CHUNK_TRANSFERED;
 const endByte = Math.min(
  startByte + CHUNK_TRANSFERED - 1,
@@ -18,18 +18,23 @@ parentPort?.postMessage({
  },
 });
 
-const stream = fs.createReadStream(workerData.filePath, {
+const rStream = fs.createReadStream(workerData.filePath, {
  start: startByte,
  end: endByte,
  encoding: 'binary',
 });
+//writing the data from read stream to a file instead of storing in memory
+const writeFilePath = `~/P2P Temp/${Date()}`;
+const wStream = fs.createWriteStream(writeFilePath, { flags: 'a' });
 
-stream.on('data', function (chunk) {
- fileChunk += chunk.toString('binary');
+rStream.on('data', function (chunk) {
+ //  fileChunk += chunk.toString('binary');
+ wStream.write(chunk.toString('binary'));
 });
-stream.on('end', function () {
+rStream.on('end', function () {
  parentPort?.postMessage({
   type: 'final',
-  val: fileChunk,
+  filePath: writeFilePath,
+  // val: fileChunk,
  });
 });

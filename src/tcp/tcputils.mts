@@ -1,8 +1,10 @@
+import fs from 'fs';
 import { Socket } from 'net';
 import crypto from 'crypto';
 
 import { USER_ID, USER_NAME, UDP_SERVER } from '../server.mjs';
 import { tcpPacket } from './tcp.mjs';
+import { FILE_CHUNK } from '../utils/constant.mjs';
 
 //send a tcp packet from the open socket
 export const sendTCPPacket = (
@@ -11,13 +13,32 @@ export const sendTCPPacket = (
  buffer: string | null,
  message: string,
  hash: string | null = null,
+ filePath: string | null = null,
 ): boolean => {
- return socket.write(
-  genreateTcpPktToStr(pktType, buffer, message, hash),
-  () => {
-   socket.end();
-  },
- );
+ if (pktType == FILE_CHUNK) {
+  let rStream = fs.createReadStream(filePath!);
+  rStream.on('error', (err) => {
+   console.log('Some error occured while file streaming', err);
+   return false;
+  });
+
+  rStream.on('open', function () {
+   rStream.pipe(socket);
+  });
+
+  rStream.on('close', () => {
+   return true;
+  });
+
+  return true;
+ } else {
+  return socket.write(
+   genreateTcpPktToStr(pktType, buffer, message, hash),
+   () => {
+    socket.end();
+   },
+  );
+ }
 };
 const genreateTcpPktToStr = (
  pktType: number,

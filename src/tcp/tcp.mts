@@ -10,7 +10,7 @@ import {
 } from '../utils/constant.mjs';
 import { closeListenerServer, dataListenerServer } from './tcpserver.mjs';
 import { dataListenerClient, sendMessageChunk } from './tcpclient.mjs';
-import { SOKCET_SERVER, UDP_SERVER, decsFileTransfers } from '../server.mjs';
+import { FILE_MANAGER, SOKCET_SERVER, UDP_SERVER, decsFileTransfers } from '../server.mjs';
 import { generateChunkHash, sendTCPPacket } from './tcputils.mjs';
 
 //TCP packet structure
@@ -50,6 +50,7 @@ export class TCPserver {
    isFileTransferSocket: boolean;
    remoteAddress: string;
    downloaderId?: string;
+   filePath?: string;
   }
  > = new Map();
 
@@ -175,6 +176,7 @@ export class TCPserver {
   isFileChunk: boolean = false,
   downloaderId: string = '',
   chunkNumber: number = 0,
+  filePath: string | null = null
  ): Promise<string> {
   return new Promise<string>((resolve, reject) => {
    let sindex = 0;
@@ -215,21 +217,33 @@ export class TCPserver {
     },
    );
    socket.setEncoding('utf-8');
-   socket.on('connect', () => {
+   socket.on('connect', async() => {
     if (isFileChunk) {
      this.ACTIVE_SOCKET_CONNECTIONS.set(socketId, {
       socket,
       isFileTransferSocket: true,
       downloaderId,
       remoteAddress: clientIP,
+      filePath: filePath!,
      });
+
+    let fileHash = await FILE_MANAGER.generateHash(filePath!);
+
+     //sending the file
+     sendTCPPacket(
+      socket,
+      TCP_MESSAGE,
+      message,
+      'File Chunk',
+      fileHash,
+      filePath,
+     );
     } else {
      this.ACTIVE_SOCKET_CONNECTIONS.set(socketId, {
       socket,
       isFileTransferSocket: false,
       remoteAddress: clientIP,
-     });
-    }
+    });
     sendTCPPacket(
      socket,
      TCP_MESSAGE,
@@ -237,6 +251,7 @@ export class TCPserver {
      'Chat message',
      generateChunkHash(message),
     );
+    }
    });
    socket.on('data', async (data: string) => {
     //sending next chunk of data to socket server
@@ -282,6 +297,7 @@ export class TCPserver {
   chunkNumber: number = 0,
  ) {
   let objToSend: TCPMessage = { message, type: messageType };
+  if(isFileChunk) objToSend = {message: "This is a file chunk", type: messageType };
   const stringObj = JSON.stringify(objToSend);
   try {
    await this.sendToTCPServer(
@@ -290,6 +306,7 @@ export class TCPserver {
     isFileChunk,
     downloaderId,
     chunkNumber,
+    message.filePath ? message.filePath : null,
    );
   } catch (error) {
    console.log(chalk.red('Failed to send chat message'));
