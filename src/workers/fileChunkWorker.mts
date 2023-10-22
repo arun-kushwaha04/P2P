@@ -1,6 +1,8 @@
 import { parentPort, workerData } from 'worker_threads';
 import fs from 'fs';
 import { CHUNK_TRANSFERED } from '../utils/constant.mjs';
+import path from 'path';
+import { FILE_MANAGER } from '../server.mjs';
 
 // let fileChunk = '';
 const startByte = workerData.chunckNumber * CHUNK_TRANSFERED;
@@ -24,9 +26,7 @@ const rStream = fs.createReadStream(workerData.filePath, {
  encoding: 'binary',
 });
 //writing the data from read stream to a file instead of storing in memory
-const writeFilePath = `~/P2P Temp/${Date()}`;
-let n = fs.openSync(writeFilePath, 'a')
-fs.closeSync(n)
+const writeFilePath = `./temp/${Date()}`;
 const wStream = fs.createWriteStream(writeFilePath, { flags: 'a' });
 
 rStream.on('data', function (chunk) {
