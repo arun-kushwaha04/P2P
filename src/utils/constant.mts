@@ -10,6 +10,7 @@ export const TCP_PACKET_SIZE: number = 1000;
 export const MAX_TRIES: number = 5;
 export const FILE_SEARCH_RESULT: number = 23543;
 export const CHAT_MESSAGE: number = 2342;
+export const FILE_CHUNK_TRANSFER_START = 3423;
 export const FILE_CHUNK: number = 3456;
 // export const CHUNK_TRANSFERED: number = 1024;
 export const CHUNK_TRANSFERED: number = 100 * 1024 * 1024;

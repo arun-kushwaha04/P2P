@@ -4,13 +4,20 @@ import chalk from 'chalk';
 import { v4 as uuidv4 } from 'uuid';
 
 import {
+ FILE_CHUNK,
+ FILE_CHUNK_TRANSFER_START,
  MAX_TCP_CONNECTIONS,
  TCP_MESSAGE,
  TCP_SERVER_PORT,
 } from '../utils/constant.mjs';
 import { closeListenerServer, dataListenerServer } from './tcpserver.mjs';
 import { dataListenerClient, sendMessageChunk } from './tcpclient.mjs';
-import { FILE_MANAGER, SOKCET_SERVER, UDP_SERVER, decsFileTransfers } from '../server.mjs';
+import {
+ FILE_MANAGER,
+ SOKCET_SERVER,
+ UDP_SERVER,
+ decsFileTransfers,
+} from '../server.mjs';
 import { generateChunkHash, sendTCPPacket } from './tcputils.mjs';
 
 //TCP packet structure
@@ -120,16 +127,9 @@ export class TCPserver {
 
    //will tigger when a socket receives data
    socket.on('data', async (data) => {
-    // dataListenerServer(
-    //  data,
-    //  getTcpMessage,
-    //  setTcpMessage,
-    //  setClientName,
-    //  setClientIPAddr,
-    //  socket,
-    // ),
-    if (!tcpMessage) tcpMessage = data.toString();
-    else tcpMessage += data;
+    // if (!tcpMessage) tcpMessage = data.toString();
+    // else tcpMessage += data;
+    console.log('Go a message', data);
    });
 
    //will trigger when a error occurs on socket
@@ -176,7 +176,7 @@ export class TCPserver {
   isFileChunk: boolean = false,
   downloaderId: string = '',
   chunkNumber: number = 0,
-  filePath: string | null = null
+  filePath: string | null = null,
  ): Promise<string> {
   return new Promise<string>((resolve, reject) => {
    let sindex = 0;
@@ -217,7 +217,7 @@ export class TCPserver {
     },
    );
    socket.setEncoding('utf-8');
-   socket.on('connect', async() => {
+   socket.on('connect', async () => {
     if (isFileChunk) {
      this.ACTIVE_SOCKET_CONNECTIONS.set(socketId, {
       socket,
@@ -227,7 +227,7 @@ export class TCPserver {
       filePath: filePath!,
      });
 
-    let fileHash = await FILE_MANAGER.generateHash(filePath!);
+     let fileHash = await FILE_MANAGER.generateHash(filePath!);
 
      //sending the file
      sendTCPPacket(
@@ -243,14 +243,14 @@ export class TCPserver {
       socket,
       isFileTransferSocket: false,
       remoteAddress: clientIP,
-    });
-    sendTCPPacket(
-     socket,
-     TCP_MESSAGE,
-     message,
-     'Chat message',
-     generateChunkHash(message),
-    );
+     });
+     sendTCPPacket(
+      socket,
+      TCP_MESSAGE,
+      message,
+      'Chat message',
+      generateChunkHash(message),
+     );
     }
    });
    socket.on('data', async (data: string) => {
@@ -297,7 +297,8 @@ export class TCPserver {
   chunkNumber: number = 0,
  ) {
   let objToSend: TCPMessage = { message, type: messageType };
-  if(isFileChunk) objToSend = {message: "This is a file chunk", type: messageType };
+  if (isFileChunk)
+   objToSend = { message: 'This is a file chunk', type: messageType };
   const stringObj = JSON.stringify(objToSend);
   try {
    await this.sendToTCPServer(
@@ -311,6 +312,45 @@ export class TCPserver {
   } catch (error) {
    console.log(chalk.red('Failed to send chat message'));
   }
+ }
+
+ public async sendFile(
+  message: any,
+  clientIpAddr: string,
+  messageType: number,
+  isFileChunk: boolean = false,
+  downloaderId: string = '',
+  chunkNumber: number = 0,
+ ) {
+  const socket: TCPSocket = net.connect({
+   port: TCP_SERVER_PORT,
+   host: clientIpAddr,
+  });
+  socket.setEncoding('utf-8');
+  socket.on('connect', () => {
+   console.log('CLIENT: socket connected to server');
+
+   // informing server about a file transfer
+   let objToSend = {
+    data: 'file transfer',
+    pktType: FILE_CHUNK_TRANSFER_START,
+   };
+   socket.write(JSON.stringify(objToSend));
+  });
+
+  socket.on('data', async (data: string) => {});
+
+  //will trigger when buffer is empty
+  socket.on('drain', function () {
+   socket.resume();
+  });
+
+  socket.on('error', () => {
+   console.log(chalk.red('TCP clinet socket err'));
+  });
+  socket.on('close', (hadError) => {
+   console.log('Closing connection');
+  });
  }
 
  public closeTCPServer() {
